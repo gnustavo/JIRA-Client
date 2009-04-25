@@ -1,0 +1,10 @@
+Changes
+MANIFEST
+Makefile.PL
+README
+TODO
+lib/JIRA/Client.pm
+t/00-load.t
+t/01-setup.t
+t/pod-coverage.t
+t/pod.t
