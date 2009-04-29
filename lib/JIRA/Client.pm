@@ -105,9 +105,8 @@ sub set_filter_iterator {
         if ($filter->{name} eq $filter_name) {
             $self->{iter} = {
 		id     => $filter->{id},
-		offset => 0,  # offset used in the last call to getIssuesFromFilterWithLimit
+		offset => 0,  # offset to be used in the next call to getIssuesFromFilterWithLimit
 		issues => [], # issues returned by the last call to getIssuesFromFilterWithLimit
-		i      => 0,  # index in issues of the next issue to be returned by next_issue
 	    };
 	    return;
         }
@@ -128,20 +127,19 @@ sub next_issue {
     defined $self->{iter}
 	or croak "You must call setFilterIterator before calling nextIssue\n";
     my $iter = $self->{iter};
-    if ($iter->{i} > $#{$iter->{issues}}) {
+    if (@{$iter->{issues}} == 0) {
+	my $issues = $self->getIssuesFromFilterWithLimit($iter->{id}, $iter->{offset}, 100);
 	my $offset = $iter->{offset} + @{$iter->{issues}};
-	my $issues = $self->getIssuesFromFilterWithLimit($iter->{id}, $offset, 100);
 	if (@$issues) {
-	    $iter->{offset} = $offset;
-	    $iter->{issues} = $issues;
-	    $iter->{i}      = 0;
+	    $iter->{offset} += @$issues;
+	    $iter->{issues}  =  $issues;
 	}
 	else {
 	    $self->{iter} = undef;
 	    return undef;
 	}
     }
-    return $iter->{issues}->[$iter->{i}++];
+    return shift @{$iter->{issues}};
 }
 
 =item B<custom_field_map> [MAP]
