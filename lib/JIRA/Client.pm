@@ -11,11 +11,11 @@ JIRA::Client - An extended interface to JIRA's SOAP API.
 
 =head1 VERSION
 
-Version 0.03
+Version 0.04
 
 =cut
 
-our $VERSION = '0.03';
+our $VERSION = '0.04';
 
 =head1 SYNOPSIS
 
@@ -210,6 +210,7 @@ sub get_versions {
 # zero-based, after the authentication token.
 
 my %typeof = (
+    addAttachmentsToIssue              => {3 => 'base64Binary'},
     archiveVersion                     => {2 => 'boolean'},
     createIssueWithSecurityLevel       => {1 => 'long'},
     deleteProjectRole                  => {1 => 'boolean'},
@@ -233,7 +234,22 @@ sub AUTOLOAD {
     # Perform any non-default type coersion
     if (my $typeof = $typeof{$method}) {
 	while (my ($i, $type) = each %$typeof) {
-	    $args[$i] = SOAP::Data->type($type => $args[$i]);
+	    if (! ref $args[$i]) {
+		$args[$i] = SOAP::Data->type($type => $args[$i]);
+	    }
+	    elsif (ref $args[$i] eq 'ARRAY') {
+		foreach (@{$args[$i]}) {
+		    $_ = SOAP::Data->type($type => $_);
+		}
+	    }
+	    elsif (ref $args[$i] eq 'HASH') {
+		foreach (values %{$args[$i]}) {
+		    $_ = SOAP::Data->type($type => $_);
+		}
+	    }
+	    else {
+		croak "Can't coerse argument $i of method $AUTOLOAD.\n";
+	    }
 	}
     }
 
