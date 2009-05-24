@@ -1,5 +1,14 @@
 Revision history for JIRA-Client
 
+0.05	2009-05-24
+
+	Implement methods get_priorities, get_versions,
+	get_custom_fields, and set_custom_fields to maintain a cache
+	of this information.
+
+	Eliminates the method custom_field_map, which is superseeded
+	by get/set_custom_fields.
+
 0.04	2009-05-05
 
 	Implement coersions for structured arguments.
