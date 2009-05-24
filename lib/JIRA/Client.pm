@@ -11,11 +11,11 @@ JIRA::Client - An extended interface to JIRA's SOAP API.
 
 =head1 VERSION
 
-Version 0.04
+Version 0.05
 
 =cut
 
-our $VERSION = '0.04';
+our $VERSION = '0.05';
 
 =head1 SYNOPSIS
 
@@ -80,7 +80,12 @@ sub new {
 	soap  => $soap,
 	auth  => scalar($auth->result()),
 	iter  => undef,
-	cfmap => undef,		# custom field map (name => id)
+	cache => {
+	    custom_fields => undef, # {name => RemoteField}
+	    priorities    => undef, # {name => RemotePriority}
+	    components    => {}, # project_key => {name => RemoteComponent}
+	    versions      => {}, # project_key => {name => RemoteVersion}
+	},
     };
 
     bless $self, $class;
@@ -142,62 +147,108 @@ sub next_issue {
     return shift @{$iter->{issues}};
 }
 
-=item B<custom_field_map> [MAP]
+=item B<get_custom_fields>
 
-This method returns a hash mapping JIRA's custom field names to their
-identifiers. It's useful since when you get a RemoteIssue object from
-this API it doesn't contain the custom field's names, but just their
-identifiers.
+This method returns a hash mapping JIRA's custom field names to the
+RemoteField representing them. It's useful since when you get a
+RemoteIssue object from this API it doesn't contain the custom field's
+names, but just their identifiers. From the RemoteField object you can
+obtain the field's B<id>, which is useful when calling the
+B<updateIssue> method.
 
-You can set the mapping passing a hash as argument. This can be useful
-if you don't have administrative priviledges to the JIRA instance,
-since only administrators can call the B<getCustomFields> API method.
+This module method calls the getCustomFields API method the first time
+and keeps the custom fields information in a cache.
 
 =cut
 
-sub custom_field_map {
-    my ($self, $map) = @_;
-    if ($map) {
-	$self->{cfmap} = $map;
+sub get_custom_fields {
+    my ($self) = @_;
+    unless (defined $self->{cache}{custom_fields}) {
+	my %custom_fields;
+	my $cfs = $self->getCustomFields();
+	foreach my $cf (@$cfs) {
+	    $custom_fields{$cf->{name}} = $cf;
+	}
+	$self->{cache}{custom_fields} = \%custom_fields;
     }
-    elsif (! $self->{cfmap}) {
-	$self->{cfmap} = \(map {($_->{name} => $_->{id})} %{$self->getCustomFields()});
-    }
-    $self->{cfmap};
+    $self->{cache}{custom_fields};
 }
 
-=item B<issue_custom_field> ISSUE, FIELD_NAME
+=item B<set_custom_fields> HASHREF
 
-This method receives a reference to a RemoteIssue object and a custom
-field name. It returns a reference to the RemoteField object inside
-the issue or undef, if there's no custom field by that name in the
-issue.
+This method passes a hash mapping JIRA's custom field names to the
+RemoteField representing them to populate the custom field's
+cache. This can be useful if you don't have administrative priviledges
+to the JIRA instance, since only administrators can call the
+B<getCustomFields> API method.
 
 =cut
 
-sub issue_custom_field {
-    my ($self, $issue, $name) = @_;
-    my $cfmap = $self->custom_field_map();
-    my $cfid  = $cfmap->{$name}
-	or croak "Unknown field '$name'.\n";
-    foreach my $cf ($issue->{customFieldValues}) {
-	return $cf if $cf->{customfieldId} eq $cfid;
+sub set_custom_fields {
+    my ($self, $cfs) = @_;
+    $self->{cache}{custom_fields} = $cfs;
+}
+
+=item B<get_priorities>
+
+This method returns a hash mapping a project's priorities names to the
+RemotePriority objects describing them.
+
+=cut
+
+sub get_priorities {
+    my ($self) = @_;
+    unless (defined $self->{cache}{priorities}) {
+	my %priorities;
+	my $prios = $self->getPriorities();
+	foreach my $prio (@$prios) {
+	    $priorities{$prio->{name}} = $prio;
+	}
+	$self->{cache}{priorities} = \%priorities;
     }
-    return undef;
+    $self->{cache}{priorities};
 }
 
 =item B<get_versions> PROJECT_KEY
 
-This method returns a hash mapping a project's version names to the
+This method returns a hash mapping a project's versions names to the
 RemoteVersion objects describing them.
 
 =cut
 
 sub get_versions {
     my ($self, $project_key) = @_;
-    my $versions = $self->getVersions($project_key);
-    my %versions = map {$_->{name} => $_} @$versions;
-    return \%versions;
+    my $cache = $self->{cache}{versions};
+    unless (exists $cache->{$project_key}) {
+	my %versions;
+	my $versions = $self->getVersions($project_key);
+	foreach my $version (@$versions) {
+	    $versions{$version->{name}} = $version;
+	}
+	$cache->{$project_key} = \%versions;
+    }
+    $cache->{$project_key};
+}
+
+=item B<get_components> PROJECT_KEY
+
+This method returns a hash mapping a project's components names to the
+RemoteComponent objects describing them.
+
+=cut
+
+sub get_components {
+    my ($self, $project_key) = @_;
+    my $cache = $self->{cache}{components};
+    unless (exists $cache->{$project_key}) {
+	my %components;
+	my $components = $self->getComponents($project_key);
+	foreach my $component (@$components) {
+	    $components{$component->{name}} = $component;
+	}
+	$cache->{$project_key} = \%components;
+    }
+    $cache->{$project_key};
 }
 
 =back
