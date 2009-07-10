@@ -92,10 +92,8 @@ sub new {
 	auth  => scalar($auth->result()),
 	iter  => undef,
 	cache => {
-	    custom_fields => undef, # {name => RemoteField}
-	    priorities    => undef, # {name => RemotePriority}
-	    components    => {}, # project_key => {name => RemoteComponent}
-	    versions      => {}, # project_key => {name => RemoteVersion}
+	    components => {}, # project_key => {name => RemoteComponent}
+	    versions   => {}, # project_key => {name => RemoteVersion}
 	},
     };
 
@@ -174,7 +172,7 @@ and keeps the custom fields information in a cache.
 
 sub get_custom_fields {
     my ($self) = @_;
-    unless (defined $self->{cache}{custom_fields}) {
+    unless (exists $self->{cache}{custom_fields}) {
 	my %custom_fields;
 	my $cfs = $self->getCustomFields();
 	foreach my $cf (@$cfs) {
@@ -209,7 +207,7 @@ RemotePriority objects describing them.
 
 sub get_priorities {
     my ($self) = @_;
-    unless (defined $self->{cache}{priorities}) {
+    unless (exists $self->{cache}{priorities}) {
 	my %priorities;
 	my $prios = $self->getPriorities();
 	foreach my $prio (@$prios) {
@@ -218,27 +216,6 @@ sub get_priorities {
 	$self->{cache}{priorities} = \%priorities;
     }
     $self->{cache}{priorities};
-}
-
-=item B<get_versions> PROJECT_KEY
-
-This method returns a hash mapping a project's versions names to the
-RemoteVersion objects describing them.
-
-=cut
-
-sub get_versions {
-    my ($self, $project_key) = @_;
-    my $cache = $self->{cache}{versions};
-    unless (exists $cache->{$project_key}) {
-	my %versions;
-	my $versions = $self->getVersions($project_key);
-	foreach my $version (@$versions) {
-	    $versions{$version->{name}} = $version;
-	}
-	$cache->{$project_key} = \%versions;
-    }
-    $cache->{$project_key};
 }
 
 =item B<get_components> PROJECT_KEY
@@ -258,6 +235,27 @@ sub get_components {
 	    $components{$component->{name}} = $component;
 	}
 	$cache->{$project_key} = \%components;
+    }
+    $cache->{$project_key};
+}
+
+=item B<get_versions> PROJECT_KEY
+
+This method returns a hash mapping a project's versions names to the
+RemoteVersion objects describing them.
+
+=cut
+
+sub get_versions {
+    my ($self, $project_key) = @_;
+    my $cache = $self->{cache}{versions};
+    unless (exists $cache->{$project_key}) {
+	my %versions;
+	my $versions = $self->getVersions($project_key);
+	foreach my $version (@$versions) {
+	    $versions{$version->{name}} = $version;
+	}
+	$cache->{$project_key} = \%versions;
     }
     $cache->{$project_key};
 }
