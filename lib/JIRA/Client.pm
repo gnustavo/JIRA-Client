@@ -198,26 +198,6 @@ sub set_custom_fields {
     $self->{cache}{custom_fields} = $cfs;
 }
 
-=item B<get_priorities>
-
-This method returns a hash mapping a project's priorities names to the
-RemotePriority objects describing them.
-
-=cut
-
-sub get_priorities {
-    my ($self) = @_;
-    unless (exists $self->{cache}{priorities}) {
-	my %priorities;
-	my $prios = $self->getPriorities();
-	foreach my $prio (@$prios) {
-	    $priorities{$prio->{name}} = $prio;
-	}
-	$self->{cache}{priorities} = \%priorities;
-    }
-    $self->{cache}{priorities};
-}
-
 =item B<get_components> PROJECT_KEY
 
 This method returns a hash mapping a project's components names to the
@@ -237,6 +217,46 @@ sub get_components {
 	$cache->{$project_key} = \%components;
     }
     $cache->{$project_key};
+}
+
+=item B<get_issue_types>
+
+This method returns a hash mapping the server's issue type names to the
+RemoteIssueType objects describing them.
+
+=cut
+
+sub get_issue_types {
+    my ($self) = @_;
+    unless (defined $self->{cache}{issue_types}) {
+	my %issue_types;
+	my $types = $self->getIssueTypes();
+	foreach my $type (@$types) {
+	    $issue_types{$type->{name}} = $type;
+	}
+	$self->{cache}{issue_types} = \%issue_types;
+    }
+    $self->{cache}{issue_types};
+}
+
+=item B<get_priorities>
+
+This method returns a hash mapping a server's priorities names to the
+RemotePriority objects describing them.
+
+=cut
+
+sub get_priorities {
+    my ($self) = @_;
+    unless (exists $self->{cache}{priorities}) {
+	my %priorities;
+	my $prios = $self->getPriorities();
+	foreach my $prio (@$prios) {
+	    $priorities{$prio->{name}} = $prio;
+	}
+	$self->{cache}{priorities} = \%priorities;
+    }
+    $self->{cache}{priorities};
 }
 
 =item B<get_versions> PROJECT_KEY
@@ -387,6 +407,7 @@ sub progress_workflow_action_safelly {
 # zero-based, after the authentication token.
 
 my %typeof = (
+    addComment                         => {1 => \&_cast_remote_comment},
     addAttachmentsToIssue              => {3 => 'base64Binary'},
     archiveVersion                     => {2 => 'boolean'},
     createIssueWithSecurityLevel       => {1 => 'long'},
@@ -401,6 +422,16 @@ my %typeof = (
     progressWorkflowAction             => {2 => \&_cast_remote_field_values},
     updateIssue                        => {1 => \&_cast_remote_field_values},
 );
+
+sub _cast_remote_comment {
+    my ($arg) = @_;
+    if (ref $arg) {
+	return $arg;
+    }
+    else {
+	return bless({body => $arg}, 'RemoteComment');
+    }
+}
 
 sub _cast_remote_field_values {
     my ($arg) = @_;
