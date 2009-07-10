@@ -42,11 +42,22 @@ L<http://docs.atlassian.com/software/jira/docs/api/rpc-jira-plugin/latest/com/at
 Moreover, it implements some other methods to make it easier to do
 some common operations.
 
-=head1 METHODS
+=head1 API METHODS
 
-With the exception of the API C<login> and C<logout> methods, which aren't needed, all other methods are available through the JIRA::Client object interface. You must call them with the same name as documented in the specification but you should not pass the C<token> argument, because it is supplied transparently by the JIRA::Client object.
+With the exception of the API C<login> and C<logout> methods, which
+aren't needed, all other methods are available through the
+JIRA::Client object interface. You must call them with the same name
+as documented in the specification but you should not pass the
+C<token> argument, because it is supplied transparently by the
+JIRA::Client object.
 
-The extra methods implemented by this module are described below.
+=head1 EXTRA METHODS
+
+This module implements some extra methods to add useful functionality
+to the API. They are described below. Note that their names don't
+follow the CamelCase convention used by the native API methods but the
+more Perlish underscore_separated_words convention so that you can
+distinguish them and we can avoid future name clashes.
 
 =over 4
 
@@ -251,6 +262,123 @@ sub get_components {
     $cache->{$project_key};
 }
 
+=item RemoteFieldValue::new ID, VALUES
+
+This is not a JIRA::Client method. It's a contructor for the
+RemoteFieldValue object that is used by some of the other methods to
+represent the value of a field of an ISSUE.
+
+It receives two arguments:
+
+=over
+
+=item ID
+
+The field name, which must be a valid key for the ISSUE hash.
+
+=item VALUES
+
+A scalar or an array of scalars which represents the field's value.
+
+=back
+
+=cut
+
+package RemoteFieldValue;
+
+sub new {
+    my ($class, $id, $values) = @_;
+    $id     = 'versions' if     $id eq 'affectsVersions';
+    $values = [$values]  unless ref $values;
+    bless({id => $id, values => $values}, $class);
+}
+
+package JIRA::Client;
+
+=item B<progress_workflow_action_safelly> ISSUE_KEY, ACTION_ID, ACTION_PARAMS
+
+This is a safe and easier to use version of the
+B<progressWorkflowAction> API method which is used to progress an
+issue through a workflow's action while making edits to the fields
+that are shown in the action screen. The API method is dangerous
+because if you forget to provide new values to all the fields shown in
+the screen, then the fields not provided will become undefined in the
+issue. The problem has a pending issue on Atlassian's JIRA
+L<http://jira.atlassian.com/browse/JRA-8717>.
+
+This method plays it safe by making sure that all fields shown in the
+screen that already have a value are given new (or the same) values so
+that they don't get undefined. It calls the B<getFieldsForAction> API
+method to grok all fields that are shown in the screen. If there is
+any field not set in the ACTION_PARAMS then it calls B<getIssue> to
+grok the missing fields current values. As a result it constructs the
+necessary RemoteFieldAction array that must be passed to
+progressWorkflowAction.
+
+The method is also easier to use because because you can pass the
+action B<name> instead of the actual action B<id> as the ACTION_ID
+argument, in which case it calls B<getAvailableActions> to grok the
+actual B<id>. Moreover, the ACTION_PARAMS should be a simple hash
+mapping a field name to its value, not the hard-to-build
+RemoteFieldValue array. The array is built internally.
+
+For example, instead of using this:
+
+  my $action_id = somehow_grok_the_id_of('close');
+  $jira->progressWorkflowAction('PRJ-5', $action_id, [
+    RemoteFieldValue->new(2, 'new value'),
+    ..., # all fields must be specified here
+  ]);
+
+And risking to forget to pass some field you can do this:
+
+  $jira->progress_workflow_action_safelly('PRJ-5', 'close', {2 => 'new value'});
+
+=cut
+
+sub progress_workflow_action_safelly {
+    my ($self, $key, $action, $params) = @_;
+    $params = {} unless defined $params;
+    ref $params and ref $params eq 'HASH'
+	or croak "progress_workflow_action_safelly's third arg must be a HASH-ref\n";
+
+    # Grok the action id if it's not a number
+    if ($action =~ /\D/) {
+	foreach my $aa (@{$self->getAvailableActions($key)}) {
+	    if ($aa->{name} eq $action) {
+		$action = $aa->{id};
+		last;
+	    }
+	}
+	croak "Unavailable action ($action).\n"
+	    if $action =~ /\D/;
+    }
+
+    # Make sure $params contains all the fields that are present in
+    # the action screen.
+    my $issue;
+    foreach my $id (map {$_->{id}} @{$self->getFieldsForAction($key, $action)}) {
+	next if exists $params->{$id};
+	$issue = $self->getIssue($key) unless defined $issue;
+	if (exists $issue->{$id}) {
+	    $params->{$id} = $issue->{$id} if defined $issue->{$id};
+	}
+	else {
+	    foreach my $cf (@{$issue->{customFieldValues}}) {
+		if ($cf->{customfieldId} eq $id) {
+		    $params->{$id} = $cf->{values};
+		    last;
+		}
+	    }
+	    # NOTE: It's not a problem if we can't find a missing
+	    # parameter in the issue. It will simple stay
+	    # undefined.
+	}
+    }
+
+    $self->progressWorkflowAction($key, $action, $params);
+}
+
 =back
 
 =cut
@@ -272,7 +400,28 @@ my %typeof = (
     getProjectById                     => {0 => 'long'},
     getProjectRole                     => {0 => 'long'},
     getProjectWithSchemesById          => {0 => 'long'},
+    progressWorkflowAction             => {2 => \&_cast_remote_field_values},
+    updateIssue                        => {1 => \&_cast_remote_field_values},
 );
+
+sub _cast_remote_field_values {
+    my ($arg) = @_;
+    if (ref $arg) {
+	if (ref $arg eq 'ARRAY') {
+	    foreach my $param (@$arg) {
+		bless $param => 'RemoteFieldValues';
+	    }
+	}
+	elsif (ref $arg eq 'HASH') {
+	    my @params;
+	    while (my ($id, $values) = each %$arg) {
+		push @params, RemoteFieldValue->new($id, $values);
+	    }
+	    return \@params;
+	}
+    }
+    return $arg;
+}
 
 # All methods follow the same call convention, which makes it easy to
 # implement them all with an AUTOLOAD.
@@ -285,7 +434,10 @@ sub AUTOLOAD {
     # Perform any non-default type coersion
     if (my $typeof = $typeof{$method}) {
 	while (my ($i, $type) = each %$typeof) {
-	    if (! ref $args[$i]) {
+	    if (ref $type && ref $type eq 'CODE') {
+		$args[$i] = $type->($args[$i]);
+	    }
+	    elsif (! ref $args[$i]) {
 		$args[$i] = SOAP::Data->type($type => $args[$i]);
 	    }
 	    elsif (ref $args[$i] eq 'ARRAY') {
