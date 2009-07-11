@@ -23,7 +23,18 @@ our $VERSION = '0.05';
 
   my $jira = JIRA::Client->new('http://jira.example.com/jira', 'user', 'passwd');
 
-  my $issue = $jira->getIssue('PRJ-123');
+  my $issue = $jira->create_issue(
+    {
+      project => 'TST',
+      type => 'Bug',
+      summary => 'Summary of the bug',
+      assignee => 'gustavo',
+      components => ['compa', 'compb'],
+      fixVersions => ['1.0.1'],
+    }
+  );
+
+  $issue = $jira->getIssue('TST-123');
 
   $jira->set_filter_iterator('my-filter');
   while (my $issue = $jira->next_issue()) {
@@ -38,6 +49,7 @@ JIRA is a proprietary bug tracking system from Atlassian
 This module implements an Object Oriented wrapper around JIRA's SOAP
 API, which is specified in
 L<http://docs.atlassian.com/software/jira/docs/api/rpc-jira-plugin/latest/com/atlassian/jira/rpc/soap/JiraSoapService.html>.
+(This version was tested against JIRA 3.13.4.)
 
 Moreover, it implements some other methods to make it easier to do
 some common operations.
@@ -50,6 +62,32 @@ JIRA::Client object interface. You must call them with the same name
 as documented in the specification but you should not pass the
 C<token> argument, because it is supplied transparently by the
 JIRA::Client object.
+
+Some of the API methods require hard-to-build data structures as
+arguments. This module tries to make them easier to call by accepting
+simpler structures and implicitly constructing the more elaborated
+ones before making the actual SOAP call. Note that this is an option,
+i.e, you can either pass the elaborate structures by yourself or the
+simpler ones in the call.
+
+=over 4
+
+=item B<addComment>
+
+The second argument can be a I<string> instead of a C<RemoteComment>
+object.
+
+=item B<progressWorkflowAction>
+
+The third argument can be a hash mapping field I<ids> to field
+I<values> instead of an array of RemoteFieldValue objects.
+
+=item B<updateIssue>
+
+The second argument can be a hash mapping field I<ids> to field
+I<values> instead of an array of RemoteFieldValue objects.
+
+=back
 
 =head1 EXTRA METHODS
 
@@ -104,10 +142,236 @@ sub DESTROY {
     shift->logout();
 }
 
+=item B<create_issue> HASH_REF
+
+Creates a new issue given a hash containing the initial values for its
+fields. The hash must specify at least the fields C<project>,
+C<summary>, and C<type>.
+
+This is an easier to use version of the createIssue API method. It's
+easier because it accepts symbolic values for some of the issue fields
+that the API method does not. Specifically:
+
+=over 4
+
+=item C<type> can be specified by I<name> instead of by I<id>.
+
+=item C<priority> can be specified by I<name> instead of by I<id>.
+
+=item C<component> can be specified by a list of component I<names> or
+I<ids> instead of a list of C<RemoteComponent> objects.
+
+=item C<affectsVersions> and C<fixVersions> can be specified by a list
+of version I<names> or I<ids> instead of a list of C<RemoteVersion>
+objects.
+
+=back
+
+
+=cut
+
+sub create_issue
+{
+    my ($self, $hash) = @_;
+    croak "create_issue requires an argument.\n"
+	unless defined $hash;
+    croak "create_issue's argument must be a HASH ref.\n"
+	unless ref $hash && ref $hash eq 'HASH';
+    for my $field (qw/project summary type/) {
+	croak "create_issue's HASH ref must define a '$field'.\n"
+	    unless exists $hash->{$field};
+    }
+
+    # Convert type names
+    if ($hash->{type} =~ /\D/) {
+	my $type  = $hash->{type};
+	my $types = $self->get_issue_types();
+
+	croak "There is no issue type called '$type'.\n"
+	    unless exists $types->{$type};
+	$hash->{type} = $types->{$type}{id};
+    }
+
+    # Convert priority names
+    if (exists $hash->{priority} && $hash->{priority} =~ /\D/) {
+	my $prio  = $hash->{priority};
+	my $prios = $self->get_priorities();
+
+	croak "There is no priority called '$prio'.\n"
+	    unless exists $prios->{$prio};
+	$hash->{priority} = $prios->{$prio}{id};
+    }
+
+    # Convert component names
+    if (exists $hash->{components}) {
+	croak "The 'components' value must be a ARRAY ref.\n"
+	    unless ref $hash->{components} && ref $hash->{components} eq 'ARRAY';
+	my $comps;
+	foreach my $c (@{$hash->{components}}) {
+	    if (! ref $c) {
+		if ($c =~ /\D/) {
+		    # It is a component name. Let us convert it into its id.
+		    $comps = $self->get_components($hash->{project}) unless defined $comps;
+		    croak "There is no component called '$c'.\n" unless exists $comps->{$c};
+		    $c = $comps->{$c}{id};
+		}
+		# Now we can convert it into an object.
+		$c = RemoteComponent->new($c);
+	    }
+	}
+    }
+
+    # Convert version ids and names into RemoteVersion objects
+    for my $versions (qw/fixVersions affectsVersions/) {
+	if (exists $hash->{$versions}) {
+	    croak "The '$versions' value must be a ARRAY ref.\n"
+		unless ref $hash->{$versions} && ref $hash->{$versions} eq 'ARRAY';
+	    my $verss;
+	    foreach my $v (@{$hash->{$versions}}) {
+		if (! ref $v) {
+		    if ($v =~ /\D/) {
+			# It is a version name. Let us convert it into its id.
+			$verss = $self->get_versions($hash->{project}) unless defined $verss;
+			croak "There is no version called '$v'.\n" unless exists $verss->{$v};
+			$v = $verss->{$v}{id};
+		    }
+		    # Now we can convert it into an object.
+		    $v = RemoteVersion->new($v);
+		}
+	    }
+	}
+    }
+
+    $self->createIssue($hash);
+}
+
+=item B<get_issue_types>
+
+Returns a hash mapping the server's issue type names to the
+RemoteIssueType objects describing them.
+
+=cut
+
+sub get_issue_types {
+    my ($self) = @_;
+    unless (defined $self->{cache}{issue_types}) {
+	my %issue_types;
+	my $types = $self->getIssueTypes();
+	foreach my $type (@$types) {
+	    $issue_types{$type->{name}} = $type;
+	}
+	$self->{cache}{issue_types} = \%issue_types;
+    }
+    $self->{cache}{issue_types};
+}
+
+=item B<get_priorities>
+
+Returns a hash mapping a server's priorities names to the
+RemotePriority objects describing them.
+
+=cut
+
+sub get_priorities {
+    my ($self) = @_;
+    unless (exists $self->{cache}{priorities}) {
+	my %priorities;
+	my $prios = $self->getPriorities();
+	foreach my $prio (@$prios) {
+	    $priorities{$prio->{name}} = $prio;
+	}
+	$self->{cache}{priorities} = \%priorities;
+    }
+    $self->{cache}{priorities};
+}
+
+=item B<get_custom_fields>
+
+Returns a hash mapping JIRA's custom field names to the RemoteField
+representing them. It's useful since when you get a RemoteIssue object
+from this API it doesn't contain the custom field's names, but just
+their identifiers. From the RemoteField object you can obtain the
+field's B<id>, which is useful when calling the B<updateIssue> method.
+
+The method calls the getCustomFields API method the first time and
+keeps the custom fields information in a cache.
+
+=cut
+
+sub get_custom_fields {
+    my ($self) = @_;
+    unless (exists $self->{cache}{custom_fields}) {
+	my %custom_fields;
+	my $cfs = $self->getCustomFields();
+	foreach my $cf (@$cfs) {
+	    $custom_fields{$cf->{name}} = $cf;
+	}
+	$self->{cache}{custom_fields} = \%custom_fields;
+    }
+    $self->{cache}{custom_fields};
+}
+
+=item B<set_custom_fields> HASHREF
+
+Passes a hash mapping JIRA's custom field names to the RemoteField
+representing them to populate the custom field's cache. This can be
+useful if you don't have administrative priviledges to the JIRA
+instance, since only administrators can call the B<getCustomFields>
+API method.
+
+=cut
+
+sub set_custom_fields {
+    my ($self, $cfs) = @_;
+    $self->{cache}{custom_fields} = $cfs;
+}
+
+=item B<get_components> PROJECT_KEY
+
+Returns a hash mapping a project's components names to the
+RemoteComponent objects describing them.
+
+=cut
+
+sub get_components {
+    my ($self, $project_key) = @_;
+    my $cache = $self->{cache}{components};
+    unless (exists $cache->{$project_key}) {
+	my %components;
+	my $components = $self->getComponents($project_key);
+	foreach my $component (@$components) {
+	    $components{$component->{name}} = $component;
+	}
+	$cache->{$project_key} = \%components;
+    }
+    $cache->{$project_key};
+}
+
+=item B<get_versions> PROJECT_KEY
+
+Returns a hash mapping a project's versions names to the RemoteVersion
+objects describing them.
+
+=cut
+
+sub get_versions {
+    my ($self, $project_key) = @_;
+    my $cache = $self->{cache}{versions};
+    unless (exists $cache->{$project_key}) {
+	my %versions;
+	my $versions = $self->getVersions($project_key);
+	foreach my $version (@$versions) {
+	    $versions{$version->{name}} = $version;
+	}
+	$cache->{$project_key} = \%versions;
+    }
+    $cache->{$project_key};
+}
+
 =item B<set_filter_iterator> FILTER_NAME
 
-This method sets up an interator for the filter identified by
-FILTER_NAME. It must be called before calls to B<next_issue>.
+Sets up an interator for the filter identified by FILTER_NAME. It must
+be called before calls to B<next_issue>.
 
 =cut
 
@@ -130,9 +394,9 @@ sub set_filter_iterator {
 
 =item B<next_issue>
 
-This method must be called after a call to
-B<set_filter_iterator>. Each call returns a reference to the next
-issue from the filter. When there are no more issues it returns undef.
+This must be called after a call to B<set_filter_iterator>. Each call
+returns a reference to the next issue from the filter. When there are
+no more issues it returns undef.
 
 =cut
 
@@ -156,163 +420,6 @@ sub next_issue {
     return shift @{$iter->{issues}};
 }
 
-=item B<get_custom_fields>
-
-This method returns a hash mapping JIRA's custom field names to the
-RemoteField representing them. It's useful since when you get a
-RemoteIssue object from this API it doesn't contain the custom field's
-names, but just their identifiers. From the RemoteField object you can
-obtain the field's B<id>, which is useful when calling the
-B<updateIssue> method.
-
-This module method calls the getCustomFields API method the first time
-and keeps the custom fields information in a cache.
-
-=cut
-
-sub get_custom_fields {
-    my ($self) = @_;
-    unless (exists $self->{cache}{custom_fields}) {
-	my %custom_fields;
-	my $cfs = $self->getCustomFields();
-	foreach my $cf (@$cfs) {
-	    $custom_fields{$cf->{name}} = $cf;
-	}
-	$self->{cache}{custom_fields} = \%custom_fields;
-    }
-    $self->{cache}{custom_fields};
-}
-
-=item B<set_custom_fields> HASHREF
-
-This method passes a hash mapping JIRA's custom field names to the
-RemoteField representing them to populate the custom field's
-cache. This can be useful if you don't have administrative priviledges
-to the JIRA instance, since only administrators can call the
-B<getCustomFields> API method.
-
-=cut
-
-sub set_custom_fields {
-    my ($self, $cfs) = @_;
-    $self->{cache}{custom_fields} = $cfs;
-}
-
-=item B<get_components> PROJECT_KEY
-
-This method returns a hash mapping a project's components names to the
-RemoteComponent objects describing them.
-
-=cut
-
-sub get_components {
-    my ($self, $project_key) = @_;
-    my $cache = $self->{cache}{components};
-    unless (exists $cache->{$project_key}) {
-	my %components;
-	my $components = $self->getComponents($project_key);
-	foreach my $component (@$components) {
-	    $components{$component->{name}} = $component;
-	}
-	$cache->{$project_key} = \%components;
-    }
-    $cache->{$project_key};
-}
-
-=item B<get_issue_types>
-
-This method returns a hash mapping the server's issue type names to the
-RemoteIssueType objects describing them.
-
-=cut
-
-sub get_issue_types {
-    my ($self) = @_;
-    unless (defined $self->{cache}{issue_types}) {
-	my %issue_types;
-	my $types = $self->getIssueTypes();
-	foreach my $type (@$types) {
-	    $issue_types{$type->{name}} = $type;
-	}
-	$self->{cache}{issue_types} = \%issue_types;
-    }
-    $self->{cache}{issue_types};
-}
-
-=item B<get_priorities>
-
-This method returns a hash mapping a server's priorities names to the
-RemotePriority objects describing them.
-
-=cut
-
-sub get_priorities {
-    my ($self) = @_;
-    unless (exists $self->{cache}{priorities}) {
-	my %priorities;
-	my $prios = $self->getPriorities();
-	foreach my $prio (@$prios) {
-	    $priorities{$prio->{name}} = $prio;
-	}
-	$self->{cache}{priorities} = \%priorities;
-    }
-    $self->{cache}{priorities};
-}
-
-=item B<get_versions> PROJECT_KEY
-
-This method returns a hash mapping a project's versions names to the
-RemoteVersion objects describing them.
-
-=cut
-
-sub get_versions {
-    my ($self, $project_key) = @_;
-    my $cache = $self->{cache}{versions};
-    unless (exists $cache->{$project_key}) {
-	my %versions;
-	my $versions = $self->getVersions($project_key);
-	foreach my $version (@$versions) {
-	    $versions{$version->{name}} = $version;
-	}
-	$cache->{$project_key} = \%versions;
-    }
-    $cache->{$project_key};
-}
-
-=item RemoteFieldValue::new ID, VALUES
-
-This is not a JIRA::Client method. It's a contructor for the
-RemoteFieldValue object that is used by some of the other methods to
-represent the value of a field of an ISSUE.
-
-It receives two arguments:
-
-=over
-
-=item ID
-
-The field name, which must be a valid key for the ISSUE hash.
-
-=item VALUES
-
-A scalar or an array of scalars which represents the field's value.
-
-=back
-
-=cut
-
-package RemoteFieldValue;
-
-sub new {
-    my ($class, $id, $values) = @_;
-    $id     = 'versions' if     $id eq 'affectsVersions';
-    $values = [$values]  unless ref $values;
-    bless({id => $id, values => $values}, $class);
-}
-
-package JIRA::Client;
-
 =item B<progress_workflow_action_safelly> ISSUE_KEY, ACTION_ID, ACTION_PARAMS
 
 This is a safe and easier to use version of the
@@ -333,12 +440,12 @@ grok the missing fields current values. As a result it constructs the
 necessary RemoteFieldAction array that must be passed to
 progressWorkflowAction.
 
-The method is also easier to use because because you can pass the
-action B<name> instead of the actual action B<id> as the ACTION_ID
-argument, in which case it calls B<getAvailableActions> to grok the
-actual B<id>. Moreover, the ACTION_PARAMS should be a simple hash
-mapping a field name to its value, not the hard-to-build
-RemoteFieldValue array. The array is built internally.
+The method is also easier to use because you can pass the action
+B<name> instead of the actual action B<id> as the ACTION_ID argument,
+in which case it calls B<getAvailableActions> to grok the actual
+B<id>. Moreover, the ACTION_PARAMS should be a simple hash mapping a
+field name to its value, not the hard-to-build RemoteFieldValue
+array. The array is built internally.
 
 For example, instead of using this:
 
@@ -399,7 +506,73 @@ sub progress_workflow_action_safelly {
 
 =back
 
+=head1 OTHER CONSTRUCTORS
+
+The JIRA SOAP API uses several types of objects (i.e., classes) for
+which the Perl SOAP interface does not provide the necessary
+constructors. This module implements some of them.
+
+=over 4
+
+=item B<RemoteFieldValue-E<gt>new> ID, VALUES
+
+The RemoteFieldValue object represent the value of a field of an
+issue. It needs two arguments:
+
+=over
+
+=item ID
+
+The field name, which must be a valid key for the ISSUE hash.
+
+=item VALUES
+
+A scalar or an array of scalars.
+
+=back
+
 =cut
+
+package RemoteFieldValue;
+
+sub new {
+    my ($class, $id, $values) = @_;
+    $id     = 'versions' if     $id eq 'affectsVersions';
+    $values = [$values]  unless ref $values;
+    bless({id => $id, values => $values}, $class);
+}
+
+=item B<RemoteComponent-E<gt>new> ID, NAME
+
+=cut
+
+package RemoteComponent;
+
+sub new {
+    my ($class, $id, $name) = @_;
+    my $o = bless({id => $id}, $class);
+    $o->{name} = $name if $name;
+    $o;
+}
+
+=item B<RemoteVersion-E<gt>new> ID, NAME
+
+=cut
+
+package RemoteVersion;
+
+sub new {
+    my ($class, $id, $name) = @_;
+    my $o = bless({id => $id}, $class);
+    $o->{name} = $name if $name;
+    $o;
+}
+
+=back
+
+=cut
+
+package JIRA::Client;
 
 # Almost all of the JIRA API parameters are strings. The %typeof hash
 # specifies the exceptions. It maps a method name to a hash mapping a
@@ -425,29 +598,20 @@ my %typeof = (
 
 sub _cast_remote_comment {
     my ($arg) = @_;
-    if (ref $arg) {
-	return $arg;
-    }
-    else {
+    unless (ref $arg) {
 	return bless({body => $arg}, 'RemoteComment');
     }
+    return $arg;
 }
 
 sub _cast_remote_field_values {
     my ($arg) = @_;
-    if (ref $arg) {
-	if (ref $arg eq 'ARRAY') {
-	    foreach my $param (@$arg) {
-		bless $param => 'RemoteFieldValues';
-	    }
+    if (ref $arg && ref $arg eq 'HASH') {
+	my @params;
+	while (my ($id, $values) = each %$arg) {
+	    push @params, RemoteFieldValue->new($id, $values);
 	}
-	elsif (ref $arg eq 'HASH') {
-	    my @params;
-	    while (my ($id, $values) = each %$arg) {
-		push @params, RemoteFieldValue->new($id, $values);
-	    }
-	    return \@params;
-	}
+	return \@params;
     }
     return $arg;
 }
