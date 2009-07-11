@@ -420,7 +420,7 @@ sub next_issue {
     return shift @{$iter->{issues}};
 }
 
-=item B<progress_workflow_action_safelly> ISSUE_KEY, ACTION_ID, ACTION_PARAMS
+=item B<progress_workflow_action_safelly> ISSUE, ACTION, PARAMS
 
 This is a safe and easier to use version of the
 B<progressWorkflowAction> API method which is used to progress an
@@ -440,12 +440,20 @@ grok the missing fields current values. As a result it constructs the
 necessary RemoteFieldAction array that must be passed to
 progressWorkflowAction.
 
-The method is also easier to use because you can pass the action
-B<name> instead of the actual action B<id> as the ACTION_ID argument,
-in which case it calls B<getAvailableActions> to grok the actual
-B<id>. Moreover, the ACTION_PARAMS should be a simple hash mapping a
-field name to its value, not the hard-to-build RemoteFieldValue
-array. The array is built internally.
+The method is also easier to use because its arguments are more
+flexible:
+
+=over 4
+
+=item C<ISSUE> can be either an issue key or a RemoteIssue object
+returned by a previous call to, e.g., C<getIssue>.
+
+=item C<ACTION> can be either an action I<id> or an action I<name>.
+
+=item C<PARAMS> can be either an array of RemoteFieldValue objects or
+a hash mapping field names to field values.
+
+=back
 
 For example, instead of using this:
 
@@ -463,6 +471,11 @@ And risking to forget to pass some field you can do this:
 
 sub progress_workflow_action_safelly {
     my ($self, $key, $action, $params) = @_;
+    my $issue;
+    if (ref $key) {
+	$issue = $key;
+	$key   = $issue->{key};
+    }
     $params = {} unless defined $params;
     ref $params and ref $params eq 'HASH'
 	or croak "progress_workflow_action_safelly's third arg must be a HASH-ref\n";
@@ -481,7 +494,6 @@ sub progress_workflow_action_safelly {
 
     # Make sure $params contains all the fields that are present in
     # the action screen.
-    my $issue;
     foreach my $id (map {$_->{id}} @{$self->getFieldsForAction($key, $action)}) {
 	next if exists $params->{$id};
 	$issue = $self->getIssue($key) unless defined $issue;
