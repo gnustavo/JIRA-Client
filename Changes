@@ -1,5 +1,19 @@
 Revision history for JIRA-Client
 
+0.10    2009-07-11
+
+	Implements methods create_issue and
+	progress_workflow_action_safelly using ideas from Jon Connel
+	<jon AT figsandfudge DOT com>.
+
+	Makes it easier to call some methods by accepting simpler
+	arguments using an idea from Bjørn-Olav Strand <BOLAV AT cpan
+	DOT org>.
+
+	Implements constructors for some helper objects.
+
+	Implements online tests agains a JIRA server.
+
 0.05	2009-05-24
 
 	Implement methods get_priorities, get_versions,
