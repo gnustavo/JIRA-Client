@@ -315,7 +315,7 @@ sub get_custom_fields {
 
 Passes a hash mapping JIRA's custom field names to the RemoteField
 representing them to populate the custom field's cache. This can be
-useful if you don't have administrative priviledges to the JIRA
+useful if you don't have administrative privileges to the JIRA
 instance, since only administrators can call the B<getCustomFields>
 API method.
 
@@ -368,28 +368,35 @@ sub get_versions {
     $cache->{$project_key};
 }
 
-=item B<set_filter_iterator> FILTER_NAME
+=item B<set_filter_iterator> FILTER
 
-Sets up an interator for the filter identified by FILTER_NAME. It must
+Sets up an iterator for the filter identified by FILTER. It must
 be called before calls to B<next_issue>.
+
+FILTER can be either a filter I<id> or a filter I<name>, in which case
+it's converted to a filter id with a call to C<getSavedFilters>.
 
 =cut
 
 sub set_filter_iterator {
-    my ($self, $filter_name) = @_;
+    my ($self, $filter) = @_;
 
-    my $filters = $self->getSavedFilters();
-    foreach my $filter (@$filters) {
-        if ($filter->{name} eq $filter_name) {
-            $self->{iter} = {
-		id     => $filter->{id},
-		offset => 0,  # offset to be used in the next call to getIssuesFromFilterWithLimit
-		issues => [], # issues returned by the last call to getIssuesFromFilterWithLimit
-	    };
-	    return;
+    if ($filter =~ /\D/) {
+	my $filters = $self->getSavedFilters();
+	foreach my $f (@$filters) {
+	    if ($f->{name} eq $filter) {
+		$filter = $f->{id};
+		last;
+	    }
         }
+	croak "Can't find filter '$filter'\n" if $filter =~ /\D/;
     }
-    croak "Can't find filter '$filter_name'\n";
+
+    $self->{iter} = {
+	id     => $filter,
+	offset => 0,  # offset to be used in the next call to getIssuesFromFilterWithLimit
+	issues => [], # issues returned by the last call to getIssuesFromFilterWithLimit
+    };
 }
 
 =item B<next_issue>
@@ -420,7 +427,7 @@ sub next_issue {
     return shift @{$iter->{issues}};
 }
 
-=item B<progress_workflow_action_safelly> ISSUE, ACTION, PARAMS
+=item B<progress_workflow_action_safely> ISSUE, ACTION, PARAMS
 
 This is a safe and easier to use version of the
 B<progressWorkflowAction> API method which is used to progress an
@@ -465,11 +472,11 @@ For example, instead of using this:
 
 And risking to forget to pass some field you can do this:
 
-  $jira->progress_workflow_action_safelly('PRJ-5', 'close', {2 => 'new value'});
+  $jira->progress_workflow_action_safely('PRJ-5', 'close', {2 => 'new value'});
 
 =cut
 
-sub progress_workflow_action_safelly {
+sub progress_workflow_action_safely {
     my ($self, $key, $action, $params) = @_;
     my $issue;
     if (ref $key) {
@@ -478,7 +485,7 @@ sub progress_workflow_action_safelly {
     }
     $params = {} unless defined $params;
     ref $params and ref $params eq 'HASH'
-	or croak "progress_workflow_action_safelly's third arg must be a HASH-ref\n";
+	or croak "progress_workflow_action_safely's third arg must be a HASH-ref\n";
 
     # Grok the action id if it's not a number
     if ($action =~ /\D/) {
