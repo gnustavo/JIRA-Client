@@ -1,6 +1,6 @@
 Name:    JIRA-Client
 What:    A OO interface to JIRA's SOAP API.
-Version: 0.10
+Version: 0.11
 Author:  Gustavo Chaves <gnustavo@cpan.org>
 
 JIRA is a proprietary bug tracking system from Atlassian
