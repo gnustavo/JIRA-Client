@@ -1,5 +1,9 @@
 Revision history for JIRA-Client
 
+0.13	2009-08-04
+
+	Make it easy to set custom fields in create_issue.
+
 0.12	2009-08-02
 
 	Avoids spurious messages during destruction with a kludge.
