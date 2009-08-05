@@ -31,6 +31,7 @@ our $VERSION = '0.12';
       assignee => 'gustavo',
       components => ['compa', 'compb'],
       fixVersions => ['1.0.1'],
+      custom_fields => {Language => 'Perl', Architecture => 'Linux'},
     }
   );
 
@@ -157,9 +158,9 @@ Creates a new issue given a hash containing the initial values for its
 fields. The hash must specify at least the fields C<project>,
 C<summary>, and C<type>.
 
-This is an easier to use version of the createIssue API method. It's
-easier because it accepts symbolic values for some of the issue fields
-that the API method does not. Specifically:
+This is an easier to use version of the createIssue API method. For
+once it accepts symbolic values for some of the issue fields that the
+API method does not. Specifically:
 
 =over 4
 
@@ -176,6 +177,12 @@ objects.
 
 =back
 
+Moreover, it accepts a 'magic' field called B<custom_fields> to make
+it easy to set custom fields. It accepts a hash mapping each custom
+field to its value. The custom field can be specified by its id (in
+the format B<customfield_NNNNN>) or by its name, in which case the
+method will try to convert it to its id. Note that to do that
+conversion the user needs administrator rights.
 
 =cut
 
@@ -213,7 +220,7 @@ sub create_issue
 
     # Convert component names
     if (exists $hash->{components}) {
-	croak "The 'components' value must be a ARRAY ref.\n"
+	croak "The 'components' value must be an ARRAY ref.\n"
 	    unless ref $hash->{components} && ref $hash->{components} eq 'ARRAY';
 	my $comps;
 	foreach my $c (@{$hash->{components}}) {
@@ -249,6 +256,28 @@ sub create_issue
 		}
 	    }
 	}
+    }
+
+    # Convert custom fields
+    if (my $cfs = delete $hash->{custom_fields}) {
+	croak "The 'custom_fields' value must be a HASH ref.\n"
+	    unless ref $cfs && ref $cfs eq 'HASH';
+	my @cfvs;
+	while (my ($id, $values) = each %$cfs) {
+	    unless ($id =~ /^customfield_\d+$/) {
+		my $cfs = $self->get_custom_fields();
+		croak "Can't find custom field named '$id'.\n"
+		    unless exists $cfs->{$id};
+		$id = $cfs->{$id}{id};
+	    }
+	    $values = [$values]  unless ref $values;
+	    push @cfvs, bless({
+		customfieldId => $id,
+		key => undef,
+		values => $values,
+	    } => 'RemoteCustomFieldValue');
+	}
+	$hash->{customFieldValues} = \@cfvs;
     }
 
     $self->createIssue($hash);
@@ -544,7 +573,7 @@ constructors. This module implements some of them.
 
 =item B<RemoteFieldValue-E<gt>new> ID, VALUES
 
-The RemoteFieldValue object represent the value of a field of an
+The RemoteFieldValue object represents the value of a field of an
 issue. It needs two arguments:
 
 =over
