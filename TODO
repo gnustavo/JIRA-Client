@@ -1,5 +1,2 @@
 - Implement some non-API methods from
   http://code.google.com/p/jira4r/source/browse/trunk/lib/jira4r/jira_tool.rb.
-
-- Make it easy to set custom fields in updateIssue and in
-  progress_workflow_action_safely.

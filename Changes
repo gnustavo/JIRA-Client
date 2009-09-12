@@ -1,5 +1,14 @@
 Revision history for JIRA-Client
 
+0.14	2009-09-12
+
+	Supporting versions of JIRA older than 3.14.4 in the method
+	next_issue.
+
+	Added an optional argument to the method set_issue_iterator to
+	allow for the specification of the pre-fetching cache size.
+
+
 0.13	2009-08-04
 
 	Make it easy to set custom fields in create_issue.
