@@ -406,7 +406,7 @@ sub get_versions {
     $cache->{$project_key};
 }
 
-=item B<set_filter_iterator> FILTER
+=item B<set_filter_iterator> FILTER [, CACHE_SIZE]
 
 Sets up an iterator for the filter identified by FILTER. It must
 be called before calls to B<next_issue>.
@@ -414,10 +414,14 @@ be called before calls to B<next_issue>.
 FILTER can be either a filter I<id> or a filter I<name>, in which case
 it's converted to a filter id with a call to C<getSavedFilters>.
 
+CACHE_SIZE defines the number of issues that will be pre-fetched by
+B<nect_issue> using C<getIssuesFromFilterWithLimit>. If not specified,
+a suitable default will be used.
+
 =cut
 
 sub set_filter_iterator {
-    my ($self, $filter) = @_;
+    my ($self, $filter, $cache_size) = @_;
 
     if ($filter =~ /\D/) {
 	my $filters = $self->getSavedFilters();
@@ -430,10 +434,16 @@ sub set_filter_iterator {
 	croak "Can't find filter '$filter'\n" if $filter =~ /\D/;
     }
 
+    if ($cache_size) {
+	croak "set_filter_iterator's second arg must be a number ($cache_size).\n"
+	    if $cache_size =~ /\D/;
+    }
+
     $self->{iter} = {
 	id     => $filter,
 	offset => 0,  # offset to be used in the next call to getIssuesFromFilterWithLimit
 	issues => [], # issues returned by the last call to getIssuesFromFilterWithLimit
+	size   => $cache_size || 128,
     };
 }
 
@@ -451,7 +461,7 @@ sub next_issue {
 	or croak "You must call setFilterIterator before calling nextIssue\n";
     my $iter = $self->{iter};
     if (@{$iter->{issues}} == 0) {
-	my $issues = $self->getIssuesFromFilterWithLimit($iter->{id}, $iter->{offset}, 100);
+	my $issues = $self->getIssuesFromFilterWithLimit($iter->{id}, $iter->{offset}, $iter->{size});
 	my $offset = $iter->{offset} + @{$iter->{issues}};
 	if (@$issues) {
 	    $iter->{offset} += @$issues;
