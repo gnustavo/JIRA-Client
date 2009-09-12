@@ -461,14 +461,28 @@ sub next_issue {
 	or croak "You must call setFilterIterator before calling nextIssue\n";
     my $iter = $self->{iter};
     if (@{$iter->{issues}} == 0) {
-	my $issues = $self->getIssuesFromFilterWithLimit($iter->{id}, $iter->{offset}, $iter->{size});
-	my $offset = $iter->{offset} + @{$iter->{issues}};
-	if (@$issues) {
-	    $iter->{offset} += @$issues;
-	    $iter->{issues}  =  $issues;
+	if ($iter->{id}) {
+	    my $issues = eval {$self->getIssuesFromFilterWithLimit($iter->{id}, $iter->{offset}, $iter->{size})};
+	    if ($@) {
+		# The getIssuesFromFilterWithLimit appeared in JIRA
+		# 3.13.4. Before that we had to use the unsafe
+		# getIssuesFromFilter. Here we detect that we're talking
+		# with an old JIRA and resort to the deprecated method
+		# instead.
+		die $@ unless $@ =~ /No such operation/;
+		$iter->{issues} = $self->getIssuesFromFilter($iter->{id});
+		$iter->{id}     = undef;
+	    }
+	    elsif (@$issues) {
+		$iter->{offset} += @$issues;
+		$iter->{issues}  =  $issues;
+	    }
+	    else {
+		$self->{iter} = undef;
+		return undef;
+	    }
 	}
 	else {
-	    $self->{iter} = undef;
 	    return undef;
 	}
     }
