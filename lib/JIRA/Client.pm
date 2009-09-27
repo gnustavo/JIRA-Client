@@ -406,7 +406,18 @@ sub next_issue {
 	or croak "You must call setFilterIterator before calling nextIssue\n";
     my $iter = $self->{iter};
     if (@{$iter->{issues}} == 0) {
-	my $issues = $self->getIssuesFromFilterWithLimit($iter->{id}, $iter->{offset}, 100);
+	my $issues = eval {$self->getIssuesFromFilterWithLimit($iter->{id}, $iter->{offset}, 1)};
+	unless (defined $issues) {
+	    # The getIssuesFromFilterWithLimit method was introduced
+	    # in JIRA version 3.13.4. Before that we had to deal with
+	    # the getIssuesFromFilter method. Since we got an error
+	    # from the new method here, we try once more with the
+	    # older method so that we can support older versions of
+	    # JIRA transparently.
+	    my $first_error = $@;
+	    $issues = eval {$self->getIssuesFromFilter($iter->{id})};
+	    die $first_error unless defined $issues;
+	}
 	my $offset = $iter->{offset} + @{$iter->{issues}};
 	if (@$issues) {
 	    $iter->{offset} += @$issues;
