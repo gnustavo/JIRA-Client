@@ -551,7 +551,8 @@ sub progress_workflow_action_safely {
 
     # Grok the action id if it's not a number
     if ($action =~ /\D/) {
-	foreach my $aa (@{$self->getAvailableActions($key)}) {
+	my @aactions = @{$self->getAvailableActions($key)};
+	foreach my $aa (@aactions) {
 	    if ($aa->{name} eq $action) {
 		$action = $aa->{id};
 		last;
@@ -563,7 +564,8 @@ sub progress_workflow_action_safely {
 
     # Make sure $params contains all the fields that are present in
     # the action screen.
-    foreach my $id (map {$_->{id}} @{$self->getFieldsForAction($key, $action)}) {
+    my @fields = @{$self->getFieldsForAction($key, $action)};
+    foreach my $id (map {$_->{id}} @fields) {
 	next if exists $params->{$id};
 	$issue = $self->getIssue($key) unless defined $issue;
 	if (exists $issue->{$id}) {
