@@ -270,7 +270,7 @@ sub create_issue
 		    unless exists $cfs->{$id};
 		$id = $cfs->{$id}{id};
 	    }
-	    $values = [$values]  unless ref $values;
+	    $values = [$values] unless ref $values;
 	    push @cfvs, bless({
 		customfieldId => $id,
 		key => undef,
@@ -519,8 +519,9 @@ returned by a previous call to, e.g., C<getIssue>.
 
 =item C<ACTION> can be either an action I<id> or an action I<name>.
 
-=item C<PARAMS> can be either an array of RemoteFieldValue objects or
-a hash mapping field names to field values.
+=item C<PARAMS> must be a hash mapping field names to field
+values. This hash accepts the same shortcuts as the argument to
+B<create_issue>.
 
 =back
 
@@ -545,28 +546,33 @@ sub progress_workflow_action_safely {
 	$issue = $key;
 	$key   = $issue->{key};
     }
+    my ($project) = (split /-/, $key)[0];
     $params = {} unless defined $params;
     ref $params and ref $params eq 'HASH'
 	or croak "progress_workflow_action_safely's third arg must be a HASH-ref\n";
 
     # Grok the action id if it's not a number
     if ($action =~ /\D/) {
-	my @aactions = @{$self->getAvailableActions($key)};
-	foreach my $aa (@aactions) {
-	    if ($aa->{name} eq $action) {
-		$action = $aa->{id};
-		last;
-	    }
+	my @available_actions = @{$self->getAvailableActions($key)};
+	my @named_actions     = grep {$action eq $_->{name}} @available_actions;
+	if (@named_actions) {
+	    $action = $named_actions[0]->{id};
 	}
-	croak "Unavailable action ($action).\n"
-	    if $action =~ /\D/;
+	else {
+	    croak "Unavailable action ($action).\n";
+	}
     }
 
     # Make sure $params contains all the fields that are present in
     # the action screen.
     my @fields = @{$self->getFieldsForAction($key, $action)};
     foreach my $id (map {$_->{id}} @fields) {
+	# This is due to a bug in JIRA
+	# http://jira.atlassian.com/browse/JRA-12300
+	$id = 'affectsVersions' if $id eq 'versions';
+
 	next if exists $params->{$id};
+
 	$issue = $self->getIssue($key) unless defined $issue;
 	if (exists $issue->{$id}) {
 	    $params->{$id} = $issue->{$id} if defined $issue->{$id};
@@ -579,8 +585,77 @@ sub progress_workflow_action_safely {
 		}
 	    }
 	    # NOTE: It's not a problem if we can't find a missing
-	    # parameter in the issue. It will simple stay
-	    # undefined.
+	    # parameter in the issue. It will simply stay undefined.
+	}
+    }
+
+    # Convert priority names
+    if (exists $params->{priority} && $params->{priority} =~ /\D/) {
+	my $prio  = $params->{priority};
+	my $prios = $self->get_priorities();
+
+	croak "There is no priority called '$prio'.\n"
+	    unless exists $prios->{$prio};
+	$params->{priority} = $prios->{$prio}{id};
+    }
+
+    # Convert component names
+    if (exists $params->{components}) {
+	croak "The 'components' value must be an ARRAY ref.\n"
+	    unless ref $params->{components} && ref $params->{components} eq 'ARRAY';
+	foreach my $c (@{$params->{components}}) {
+	    if (ref $c) {
+		die "Unexpected object in components list (", ref($c), ")\n"
+		    unless ref $c eq 'RemoteComponent';
+		$c = $c->{id};
+	    }
+	    elsif ($c =~ /\D/) {
+		# It is a component name. Let us convert it into its id.
+		my $components = $self->get_components($project);
+		croak "There is no component called '$c'.\n" unless exists $components->{$c};
+		$c = $components->{$c}{id};
+	    }
+	}
+    }
+
+    # Convert version ids and names into RemoteVersion objects
+    for my $versions (qw/fixVersions affectsVersions/) {
+	if (exists $params->{$versions}) {
+	    croak "The '$versions' value must be a ARRAY ref.\n"
+		unless ref $params->{$versions} && ref $params->{$versions} eq 'ARRAY';
+	    foreach my $v (@{$params->{$versions}}) {
+		if (ref $v) {
+		    die "Unexpected object in version list (", ref($v), ")\n"
+			unless ref $v eq 'RemoteVersion';
+		    $v = $v->{id};
+		}
+		elsif ($v =~ /\D/) {
+		    # It is a version name. Let us convert it into its id.
+		    my $versions = $self->get_versions($project);
+		    croak "There is no version called '$v'.\n" unless exists $versions->{$v};
+		    $v = $versions->{$v}{id};
+		}
+	    }
+	}
+    }
+    if (exists $params->{affectsVersions}) {
+	# This is due to a bug in JIRA
+	# http://jira.atlassian.com/browse/JRA-12300
+	$params->{versions} = delete $params->{affectsVersions};
+    }
+
+    # Convert custom fields
+    if (my $custom_fields = delete $params->{custom_fields}) {
+	croak "The 'custom_fields' value must be a HASH ref.\n"
+	    unless ref $custom_fields && ref $custom_fields eq 'HASH';
+	while (my ($id, $values) = each %$custom_fields) {
+	    unless ($id =~ /^customfield_\d+$/) {
+		my $cfs = $self->get_custom_fields();
+		croak "Can't find custom field named '$id'.\n"
+		    unless exists $cfs->{$id};
+		$id = $cfs->{$id}{id};
+	    }
+	    $params->{$id} = [$values] unless ref $values;
 	}
     }
 
@@ -620,8 +695,12 @@ package RemoteFieldValue;
 
 sub new {
     my ($class, $id, $values) = @_;
-    $id     = 'versions' if     $id eq 'affectsVersions';
-    $values = [$values]  unless ref $values;
+
+    # This is due to a bug in JIRA
+    # http://jira.atlassian.com/browse/JRA-12300
+    $id = 'versions' if $id eq 'affectsVersions';
+
+    $values = [$values] unless ref $values;
     bless({id => $id, values => $values}, $class);
 }
 
