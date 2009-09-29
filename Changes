@@ -1,5 +1,13 @@
 Revision history for JIRA-Client
 
+0.15	2009-09-28
+
+	The method progress_workflow_action_safely hash argument now
+	accepts the same shortcuts as the create_issue argument does.
+
+	Nate Murray and Jon Connell sent me bug reports and
+	suggestions. Thanks.
+
 0.14	2009-09-12
 
 	Supporting versions of JIRA older than 3.14.4 in the method

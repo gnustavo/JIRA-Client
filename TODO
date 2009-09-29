@@ -1,2 +1,7 @@
 - Implement some non-API methods from
   http://code.google.com/p/jira4r/source/browse/trunk/lib/jira4r/jira_tool.rb.
+
+- Implement a CLI tool like
+  http://confluence.atlassian.com/display/JIRAEXT/JIRA+Command+Line+Interface
+  or http://confluence.atlassian.com/display/JIRAEXT/JIRA+CLI as a
+  proof-of-concept usage example.
