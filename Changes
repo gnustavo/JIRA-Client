@@ -1,5 +1,18 @@
 Revision history for JIRA-Client
 
+0.16	2009-10-04
+
+	Implements the method get_favourite_filters, which caches the
+	user's favourite filters.
+
+	Casts automatically filter names into filter id in the
+	arguments for getIssueCountForFilter, getIssuesFromFilter, and
+	getIssuesFromFilterWithLimit.
+
+	These changes were inspired by Andrew Grangaard's example in
+	http://www.lowlevelmanager.com/2009/09/access-jira-api-from-perl-with.html.
+	Thanks!
+
 0.15	2009-09-28
 
 	The method progress_workflow_action_safely hash argument now
