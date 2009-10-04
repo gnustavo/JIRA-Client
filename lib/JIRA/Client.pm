@@ -406,6 +406,27 @@ sub get_versions {
     $cache->{$project_key};
 }
 
+=item B<get_favourite_filters>
+
+Returns a hash mapping the user's favourite filter names to its filter
+ids.
+
+=cut
+
+sub get_favourite_filters {
+    my ($self) = @_;
+    my $cache = $self->{cache};
+    unless (exists $cache->{filters}) {
+	my %filters;
+	my $filters = $self->getFavouriteFilters();
+	foreach my $filter (@$filters) {
+	    $filters{$filter->{name}} = $filter;
+	}
+	$cache->{filters} = \%filters;
+    }
+    $cache->{filters};
+}
+
 =item B<set_filter_iterator> FILTER [, CACHE_SIZE]
 
 Sets up an iterator for the filter identified by FILTER. It must
@@ -618,7 +639,7 @@ sub progress_workflow_action_safely {
 	}
     }
 
-    # Convert version ids and names into RemoteVersion objects
+    # Convert version names and RemoteVersion objects into version ids
     for my $versions (qw/fixVersions affectsVersions/) {
 	if (exists $params->{$versions}) {
 	    croak "The '$versions' value must be a ARRAY ref.\n"
@@ -748,7 +769,9 @@ my %typeof = (
     createIssueWithSecurityLevel       => {1 => 'long'},
     deleteProjectRole                  => {1 => 'boolean'},
     getComment                         => {0 => 'long'},
-    getIssuesFromFilterWithLimit       => {1 => 'int', 2 => 'int'},
+    getIssueCountForFilter             => {0 => \&_cast_filter_name_to_id},
+    getIssuesFromFilter                => {0 => \&_cast_filter_name_to_id},
+    getIssuesFromFilterWithLimit       => {0 => \&_cast_filter_name_to_id, 1 => 'int', 2 => 'int'},
     getIssuesFromTextSearchWithLimit   => {1 => 'int', 2 => 'int'},
     getIssuesFromTextSearchWithProject => {2 => 'int'},
     getProjectById                     => {0 => 'long'},
@@ -759,15 +782,24 @@ my %typeof = (
 );
 
 sub _cast_remote_comment {
-    my ($arg) = @_;
+    my ($self, $arg) = @_;
     unless (ref $arg) {
 	return bless({body => $arg}, 'RemoteComment');
     }
     return $arg;
 }
 
+sub _cast_filter_name_to_id {
+    my ($self, $arg) = @_;
+    ref $arg and croak "Filter arg must be a scalar, not a ", ref($arg), "\n";
+    return $arg unless $arg =~ /\D/;
+    my $filters = $self->get_favourite_filters();
+    exists $filters->{$arg} or croak "Unknown filter: $arg\n";
+    return $filters->{$arg}{id};
+}
+
 sub _cast_remote_field_values {
-    my ($arg) = @_;
+    my ($self, $arg) = @_;
     if (ref $arg && ref $arg eq 'HASH') {
 	my @params;
 	while (my ($id, $values) = each %$arg) {
@@ -790,7 +822,7 @@ sub AUTOLOAD {
     if (my $typeof = $typeof{$method}) {
 	while (my ($i, $type) = each %$typeof) {
 	    if (ref $type && ref $type eq 'CODE') {
-		$args[$i] = $type->($args[$i]);
+		$args[$i] = $type->($self, $args[$i]);
 	    }
 	    elsif (! ref $args[$i]) {
 		$args[$i] = SOAP::Data->type($type => $args[$i]);
