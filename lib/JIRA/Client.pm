@@ -152,6 +152,53 @@ sub DESTROY {
     # shift->logout();
 }
 
+# These are some helper functions to convert names into objects.
+
+sub _convert_priority {
+    my ($self, $refprio) = @_;
+    return unless $$refprio =~ /\D/;
+    my $prios = $self->get_priorities();
+    croak "There is no priority called '$$refprio'.\n"
+       unless exists $prios->{$$refprio};
+    $$refprio = $prios->{$$refprio}{id};
+}
+
+sub _convert_components {
+    my ($self, $icomps, $project) = @_; # issue components, project key
+    croak "The 'components' value must be an ARRAY ref.\n"
+       unless ref $icomps && ref $icomps eq 'ARRAY';
+    my $pcomps;			# project components
+    foreach my $c (@{$icomps}) {
+       next if ref $c;
+       if ($c =~ /\D/) {
+           # It's a component name. Let us convert it into its id.
+           $pcomps = $self->get_components($project) unless defined $pcomps;
+           croak "There is no component called '$c'.\n" unless exists $pcomps->{$c};
+           $c = $pcomps->{$c}{id};
+       }
+       # Now we can convert it into an object.
+       $c = RemoteComponent->new($c);
+    }
+}
+
+sub _convert_versions {
+    my ($self, $iversions, $project) = @_;  # issue versions, project key
+    croak "The '$iversions' value must be a ARRAY ref.\n"
+       unless ref $iversions && ref $iversions eq 'ARRAY';
+    my $pversions;
+    foreach my $v (@{$iversions}) {
+       next if ref $v;
+       if ($v =~ /\D/) {
+           # It is a version name. Let us convert it into its id.
+           $pversions = $self->get_versions($project) unless defined $pversions;
+           croak "There is no version called '$v'.\n" unless exists $pversions->{$v};
+           $v = $pversions->{$v}{id};
+       }
+       # Now we can convert it into an object.
+       $v = RemoteVersion->new($v);
+    }
+}
+
 =item B<create_issue> HASH_REF
 
 Creates a new issue given a hash containing the initial values for its
@@ -209,53 +256,17 @@ sub create_issue
     }
 
     # Convert priority names
-    if (exists $hash->{priority} && $hash->{priority} =~ /\D/) {
-	my $prio  = $hash->{priority};
-	my $prios = $self->get_priorities();
-
-	croak "There is no priority called '$prio'.\n"
-	    unless exists $prios->{$prio};
-	$hash->{priority} = $prios->{$prio}{id};
-    }
+    $self->_convert_priority(\{$hash->{priority}})
+	if exists $hash->{priority};
 
     # Convert component names
-    if (exists $hash->{components}) {
-	croak "The 'components' value must be an ARRAY ref.\n"
-	    unless ref $hash->{components} && ref $hash->{components} eq 'ARRAY';
-	my $comps;
-	foreach my $c (@{$hash->{components}}) {
-	    if (! ref $c) {
-		if ($c =~ /\D/) {
-		    # It is a component name. Let us convert it into its id.
-		    $comps = $self->get_components($hash->{project}) unless defined $comps;
-		    croak "There is no component called '$c'.\n" unless exists $comps->{$c};
-		    $c = $comps->{$c}{id};
-		}
-		# Now we can convert it into an object.
-		$c = RemoteComponent->new($c);
-	    }
-	}
-    }
+    $self->_convert_components($hash->{components}, $hash->{project})
+	if exists $hash->{components};
 
     # Convert version ids and names into RemoteVersion objects
     for my $versions (qw/fixVersions affectsVersions/) {
-	if (exists $hash->{$versions}) {
-	    croak "The '$versions' value must be a ARRAY ref.\n"
-		unless ref $hash->{$versions} && ref $hash->{$versions} eq 'ARRAY';
-	    my $verss;
-	    foreach my $v (@{$hash->{$versions}}) {
-		if (! ref $v) {
-		    if ($v =~ /\D/) {
-			# It is a version name. Let us convert it into its id.
-			$verss = $self->get_versions($hash->{project}) unless defined $verss;
-			croak "There is no version called '$v'.\n" unless exists $verss->{$v};
-			$v = $verss->{$v}{id};
-		    }
-		    # Now we can convert it into an object.
-		    $v = RemoteVersion->new($v);
-		}
-	    }
-	}
+	$self->_convert_versions($hash->{$versions}, $hash->{project})
+	    if exists $hash->{$versions};
     }
 
     # Convert custom fields
@@ -611,57 +622,26 @@ sub progress_workflow_action_safely {
     }
 
     # Convert priority names
-    if (exists $params->{priority} && $params->{priority} =~ /\D/) {
-	my $prio  = $params->{priority};
-	my $prios = $self->get_priorities();
-
-	croak "There is no priority called '$prio'.\n"
-	    unless exists $prios->{$prio};
-	$params->{priority} = $prios->{$prio}{id};
-    }
+    $self->_convert_priority(\{$params->{priority}})
+	if exists $params->{priority};
 
     # Convert component names
     if (exists $params->{components}) {
-	croak "The 'components' value must be an ARRAY ref.\n"
-	    unless ref $params->{components} && ref $params->{components} eq 'ARRAY';
-	foreach my $c (@{$params->{components}}) {
-	    if (ref $c) {
-		die "Unexpected object in components list (", ref($c), ")\n"
-		    unless ref $c eq 'RemoteComponent';
-		$c = $c->{id};
-	    }
-	    elsif ($c =~ /\D/) {
-		# It is a component name. Let us convert it into its id.
-		my $components = $self->get_components($project);
-		croak "There is no component called '$c'.\n" unless exists $components->{$c};
-		$c = $components->{$c}{id};
-	    }
-	}
+	$self->_convert_components($params->{components}, $project);
+	# Now convert objects into ids.
+	$_ = $_->{id} foreach @{$params->{components}};
     }
 
     # Convert version names and RemoteVersion objects into version ids
     for my $versions (qw/fixVersions affectsVersions/) {
 	if (exists $params->{$versions}) {
-	    croak "The '$versions' value must be a ARRAY ref.\n"
-		unless ref $params->{$versions} && ref $params->{$versions} eq 'ARRAY';
-	    foreach my $v (@{$params->{$versions}}) {
-		if (ref $v) {
-		    die "Unexpected object in version list (", ref($v), ")\n"
-			unless ref $v eq 'RemoteVersion';
-		    $v = $v->{id};
-		}
-		elsif ($v =~ /\D/) {
-		    # It is a version name. Let us convert it into its id.
-		    my $versions = $self->get_versions($project);
-		    croak "There is no version called '$v'.\n" unless exists $versions->{$v};
-		    $v = $versions->{$v}{id};
-		}
-	    }
+	    $self->_convert_versions($params->{$versions}, $project);
+	    # Now convert objects into ids.
+	    $_ = $_->{id} foreach @{$params->{$versions}};
 	}
     }
     if (exists $params->{affectsVersions}) {
-	# This is due to a bug in JIRA
-	# http://jira.atlassian.com/browse/JRA-12300
+	# This is due to a bug in JIRA: http://jira.atlassian.com/browse/JRA-12300
 	$params->{versions} = delete $params->{affectsVersions};
     }
 
