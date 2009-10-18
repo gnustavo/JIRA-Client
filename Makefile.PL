@@ -7,11 +7,18 @@ use Getopt::Long  qw(GetOptions);
 # clean up the online testing flag file.
 unlink("t/online.enabled");
 
-my $usage = "$0 [--online-tests=JIRAURL,USER,PASS,PRJKEY,ISSUETYPE,PRIORITY,COMPONENT,VERSION,CUSTOMFIELDNAME,CUSTOMFIELDVALUE,FILTER,ACTION]\n";
+my $usage = "$0 [--author-tests] [--online-tests=JIRAURL,USER,PASS,PRJKEY,ISSUETYPE,PRIORITY,COMPONENT,VERSION,CUSTOMFIELDNAME,CUSTOMFIELDVALUE,FILTER,ACTION]\n";
+my $author_tests = 0;
 my $online_tests;
 GetOptions(
+    'author-tests'   => \$author_tests,
     'online-tests=s' => \$online_tests,
 ) or die $usage;
+
+if ($author_tests) {
+    open(ENABLED, '>t/author.enabled') or die "Can't touch ./t/author.enabled: $!";
+    close(ENABLED)                     or die "Can't touch ./t/author.enabled: $!";
+}
 
 if ($online_tests) {
     # These are the author's personal test configuration. :-)
@@ -51,5 +58,5 @@ WriteMakefile(
 	'SOAP::Lite' => 0,
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
-    clean               => { FILES => 'JIRA-Client-*' },
+    clean               => { FILES => 'JIRA-Client-* t/author.enabled t/online.enabled' },
 );
