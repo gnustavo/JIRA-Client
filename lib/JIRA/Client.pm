@@ -152,15 +152,28 @@ sub DESTROY {
     # shift->logout();
 }
 
-# These are some helper functions to convert names into objects.
+# These are some helper functions to convert names into ids.
+
+sub _convert_type {
+    my ($self, $type) = @_;
+    if ($type =~ /\D/) {
+	my $types = $self->get_issue_types();
+	croak "There is no issue type called '$type'.\n"
+	    unless exists $types->{$type};
+	return $types->{$type}{id};
+    }
+    return $type;
+}
 
 sub _convert_priority {
-    my ($self, $refprio) = @_;
-    return unless $$refprio =~ /\D/;
-    my $prios = $self->get_priorities();
-    croak "There is no priority called '$$refprio'.\n"
-       unless exists $prios->{$$refprio};
-    $$refprio = $prios->{$$refprio}{id};
+    my ($self, $prio) = @_;
+    if ($prio =~ /\D/) {
+	my $prios = $self->get_priorities();
+	croak "There is no priority called '$prio'.\n"
+	    unless exists $prios->{$prio};
+	return $prios->{$prio}{id};
+    }
+    return $prio;
 }
 
 sub _convert_components {
@@ -197,6 +210,23 @@ sub _convert_versions {
        # Now we can convert it into an object.
        $v = RemoteVersion->new($v);
     }
+}
+
+sub _convert_custom_fields {
+    my ($self, $custom_fields) = @_;
+    croak "The 'custom_fields' value must be a HASH ref.\n"
+	unless ref $custom_fields && ref $custom_fields eq 'HASH';
+    my %id2values;
+    while (my ($id, $values) = each %$custom_fields) {
+	unless ($id =~ /^customfield_\d+$/) {
+	    my $cfs = $self->get_custom_fields();
+	    croak "Can't find custom field named '$id'.\n"
+		unless exists $cfs->{$id};
+	    $id = $cfs->{$id}{id};
+	}
+	$id2values{$id} = ref $values ? $values : [$values];
+    }
+    return \%id2values;
 }
 
 =item B<create_issue> HASH_REF
@@ -246,17 +276,10 @@ sub create_issue
     }
 
     # Convert type names
-    if ($hash->{type} =~ /\D/) {
-	my $type  = $hash->{type};
-	my $types = $self->get_issue_types();
-
-	croak "There is no issue type called '$type'.\n"
-	    unless exists $types->{$type};
-	$hash->{type} = $types->{$type}{id};
-    }
+    $hash->{type} = $self->_convert_type($hash->{type});
 
     # Convert priority names
-    $self->_convert_priority(\{$hash->{priority}})
+    $hash->{priority} = $self->_convert_priority($hash->{priority})
 	if exists $hash->{priority};
 
     # Convert component names
@@ -270,23 +293,11 @@ sub create_issue
     }
 
     # Convert custom fields
-    if (my $cfs = delete $hash->{custom_fields}) {
-	croak "The 'custom_fields' value must be a HASH ref.\n"
-	    unless ref $cfs && ref $cfs eq 'HASH';
+    if (my $custom_fields = delete $hash->{custom_fields}) {
 	my @cfvs;
-	while (my ($id, $values) = each %$cfs) {
-	    unless ($id =~ /^customfield_\d+$/) {
-		my $cfs = $self->get_custom_fields();
-		croak "Can't find custom field named '$id'.\n"
-		    unless exists $cfs->{$id};
-		$id = $cfs->{$id}{id};
-	    }
-	    $values = [$values] unless ref $values;
-	    push @cfvs, bless({
-		customfieldId => $id,
-		key => undef,
-		values => $values,
-	    } => 'RemoteCustomFieldValue');
+	my $id2values = $self->_convert_custom_fields($custom_fields);
+	while (my ($id, $values) = each %$id2values) {
+	    push @cfvs, RemoteCustomFieldValue->new($id, $values);
 	}
 	$hash->{customFieldValues} = \@cfvs;
     }
@@ -622,7 +633,7 @@ sub progress_workflow_action_safely {
     }
 
     # Convert priority names
-    $self->_convert_priority(\{$params->{priority}})
+    $params->{priority} = $self->_convert_priority($params->{priority})
 	if exists $params->{priority};
 
     # Convert component names
@@ -647,20 +658,47 @@ sub progress_workflow_action_safely {
 
     # Convert custom fields
     if (my $custom_fields = delete $params->{custom_fields}) {
-	croak "The 'custom_fields' value must be a HASH ref.\n"
-	    unless ref $custom_fields && ref $custom_fields eq 'HASH';
-	while (my ($id, $values) = each %$custom_fields) {
-	    unless ($id =~ /^customfield_\d+$/) {
-		my $cfs = $self->get_custom_fields();
-		croak "Can't find custom field named '$id'.\n"
-		    unless exists $cfs->{$id};
-		$id = $cfs->{$id}{id};
-	    }
-	    $params->{$id} = [$values] unless ref $values;
+	my $id2values = $self->_convert_custom_fields($custom_fields);
+	while (my ($id, $values) = each %$id2values) {
+	    $params->{$id} = $values;
 	}
     }
 
     $self->progressWorkflowAction($key, $action, $params);
+}
+
+=item B<get_issue_custom_field_values> ISSUE, NAME_OR_IDs
+
+This method receives a RemoteField object and a list of names or ids
+of custom fields. It returns a list of references to the ARRAYs
+containing the values of the ISSUE's custom fields denoted by their
+NAME_OR_IDs. Returns undef for custom fields not set on the issue.
+
+In scalar context it returns a reference to the list.
+
+=cut
+
+sub get_issue_custom_field_values {
+    my ($self, $issue, @cfs) = @_;
+    my @values;
+    my $cfs;
+  CUSTOM_FIELD:
+    foreach my $cf (@cfs) {
+	unless ($cf =~ /^customfield_\d+$/) {
+	    $cfs = $self->get_custom_fields() unless defined $cfs;
+	    croak "Can't find custom field named '$cf'.\n"
+		unless exists $cfs->{$cf};
+	    $cf = $cfs->{$cf}{id};
+	}
+	foreach my $rcfv (@{$issue->{customFieldValues}}) {
+	    if ($rcfv->{customfieldId} eq $cf) {
+		push @values, $rcfv->{values};
+		next CUSTOM_FIELD;
+	    }
+	}
+	push @values, undef;	# unset custom field
+    }
+    return wantarray ? @values : \@values;
 }
 
 =back
@@ -703,6 +741,34 @@ sub new {
 
     $values = [$values] unless ref $values;
     bless({id => $id, values => $values}, $class);
+}
+
+=item B<RemoteCustomFieldValue-E<gt>new> ID, VALUES
+
+The RemoteCustomFieldValue object represents the value of a
+custom_field of an issue. It needs two arguments:
+
+=over
+
+=item ID
+
+The field name, which must be a valid custom_field key.
+
+=item VALUES
+
+A scalar or an array of scalars.
+
+=back
+
+=cut
+
+package RemoteCustomFieldValue;
+
+sub new {
+    my ($class, $id, $values) = @_;
+
+    $values = [$values] unless ref $values;
+    bless({customfieldId => $id, key => undef, values => $values} => $class);
 }
 
 =item B<RemoteComponent-E<gt>new> ID, NAME
