@@ -1,5 +1,17 @@
 Revision history for JIRA-Client
 
+0.17	2009-10-18
+
+	Implements the method get_issue_custom_field_values, to more
+	easily grok the custom field values from an issue.
+
+	Refactors some code in a bunch of helper functions.
+
+	Implements many more online tests. There are 39 now.
+
+	Makes the POD tests disabled by default. They are meant to be
+	used by the author only.
+
 0.16	2009-10-04
 
 	Implements the method get_favourite_filters, which caches the
