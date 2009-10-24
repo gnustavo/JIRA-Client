@@ -2,7 +2,7 @@
 name:                JIRA-Client
 version:             0.17
 abstract:            An extended interface to JIRA's SOAP API.
-license:             ~
+license:             perl
 author:              
     - Gustavo Chaves <gnustavo@cpan.org>
 generated_by:        ExtUtils::MakeMaker version 6.42
