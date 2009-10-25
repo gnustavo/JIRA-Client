@@ -1,9 +1,15 @@
 use Test::More;
 
-plan skip_all => "Author-only tests" unless -e 't/author.enabled';
+unless (-e 't/author.enabled') {
+    plan skip_all => "Author-only tests";
+    exit 0;
+}
 
-eval { require Test::Kwalitee; Test::Kwalitee->import() };
+require Test::Kwalitee;
 
-plan skip_all => 'Test::Kwalitee not installed; skipping' if $@;
+if ($@) {
+   plan skip_all => 'Test::Kwalitee not installed; skipping';
+   exit 0;
+}
 
-
+Test::Kwalitee->import();
