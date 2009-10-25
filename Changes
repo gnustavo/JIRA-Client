@@ -1,5 +1,10 @@
 Revision history for JIRA-Client
 
+0.18    2009-10-24
+
+	Adding kwalitee test. (See
+	http://cpants.perl.org/dist/overview/JIRA-Client)
+
 0.17	2009-10-18
 
 	Implements the method get_issue_custom_field_values, to more
