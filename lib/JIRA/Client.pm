@@ -809,21 +809,26 @@ package JIRA::Client;
 # zero-based, after the authentication token.
 
 my %typeof = (
-    addComment                         => {1 => \&_cast_remote_comment},
     addAttachmentsToIssue              => {3 => 'base64Binary'},
+    addComment                         => {1 => \&_cast_remote_comment},
     archiveVersion                     => {2 => 'boolean'},
     createIssueWithSecurityLevel       => {1 => 'long'},
+    deleteProjectAvatar                => {0 => 'long'},
     deleteProjectRole                  => {1 => 'boolean'},
     getComment                         => {0 => 'long'},
     getIssueCountForFilter             => {0 => \&_cast_filter_name_to_id},
     getIssuesFromFilter                => {0 => \&_cast_filter_name_to_id},
     getIssuesFromFilterWithLimit       => {0 => \&_cast_filter_name_to_id, 1 => 'int', 2 => 'int'},
+    getIssuesFromJqlSearch             => {1 => 'int'},
     getIssuesFromTextSearchWithLimit   => {1 => 'int', 2 => 'int'},
     getIssuesFromTextSearchWithProject => {2 => 'int'},
+    getProjectAvatars                  => {1 => 'boolean'},
     getProjectById                     => {0 => 'long'},
     getProjectRole                     => {0 => 'long'},
     getProjectWithSchemesById          => {0 => 'long'},
+    getResolutionDateById              => {0 => 'long'},
     progressWorkflowAction             => {2 => \&_cast_remote_field_values},
+    setProjectAvatar                   => {1 => 'long'},
     updateIssue                        => {1 => \&_cast_remote_field_values},
 );
 
