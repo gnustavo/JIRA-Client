@@ -50,7 +50,7 @@ JIRA is a proprietary bug tracking system from Atlassian
 This module implements an Object Oriented wrapper around JIRA's SOAP
 API, which is specified in
 L<http://docs.atlassian.com/software/jira/docs/api/rpc-jira-plugin/latest/com/atlassian/jira/rpc/soap/JiraSoapService.html>.
-(This version was tested against JIRA 3.13.4.)
+(This version is known to work with JIRA 4 but it was tested by the author only against JIRA 3.13.4 so far.)
 
 Moreover, it implements some other methods to make it easier to do
 some common operations.
