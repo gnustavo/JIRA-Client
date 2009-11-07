@@ -522,11 +522,11 @@ sub next_issue {
 	    }
 	    else {
 		$self->{iter} = undef;
-		return undef;
+		return;
 	    }
 	}
 	else {
-	    return undef;
+	    return;
 	}
     }
     return shift @{$iter->{issues}};

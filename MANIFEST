@@ -7,5 +7,6 @@ lib/JIRA/Client.pm
 t/00-load.t
 t/01-online.t
 t/kwalitee.t
+t/perlcritic.t
 t/pod-coverage.t
 t/pod.t
