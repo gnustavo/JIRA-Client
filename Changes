@@ -1,9 +1,19 @@
 Revision history for JIRA-Client
 
+0.20    2009-11-20
+
+	Converts the 'duedate' field from the ISO format (YYYY-MM-DD)
+	into the JIRA required format (d/MMM/yy) in create_issue and
+	progress_workflow_action_safely. This is necessary because
+	while JIRA requires the later, it gives the former in
+	getIssue. Thanks to Andrey Belous for alerting me about this.
+
+	Adds a perlcritic test and placates some of its criticisms.
+
 0.19    2009-11-06
 
 	Updates the default conversions for the new JIRA 4.0 methods.
-	Thanks to M�rio Moreira for alerting me about this.
+	Thanks to Mário Moreira for alerting me about this.
 
 0.18    2009-10-24
 
@@ -71,7 +81,7 @@ Revision history for JIRA-Client
 	<jon AT figsandfudge DOT com>.
 
 	Makes it easier to call some methods by accepting simpler
-	arguments using an idea from Bjørn-Olav Strand <BOLAV AT cpan
+	arguments using an idea from BjÃ¸rn-Olav Strand <BOLAV AT cpan
 	DOT org>.
 
 	Implements constructors for some helper objects.
