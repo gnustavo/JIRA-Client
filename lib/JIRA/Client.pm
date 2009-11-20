@@ -155,33 +155,36 @@ sub DESTROY {
 # These are some helper functions to convert names into ids.
 
 sub _convert_type {
-    my ($self, $type) = @_;
+    my ($self, $hash) = @_;
+    my $type = $hash->{type};
     if ($type =~ /\D/) {
         my $types = $self->get_issue_types();
         croak "There is no issue type called '$type'.\n"
             unless exists $types->{$type};
-        return $types->{$type}{id};
+        $hash->{type} = $types->{$type}{id};
     }
-    return $type;
+    return;
 }
 
 sub _convert_priority {
-    my ($self, $prio) = @_;
+    my ($self, $hash) = @_;
+    my $prio = $hash->{priority};
     if ($prio =~ /\D/) {
         my $prios = $self->get_priorities();
         croak "There is no priority called '$prio'.\n"
             unless exists $prios->{$prio};
-        return $prios->{$prio}{id};
+        $hash->{priority} = $prios->{$prio}{id};
     }
-    return $prio;
+    return;
 }
 
 sub _convert_components {
-    my ($self, $icomps, $project) = @_; # issue components, project key
+    my ($self, $hash, $key, $project) = @_;
+    my $comps = $hash->{components};
     croak "The 'components' value must be an ARRAY ref.\n"
-       unless ref $icomps && ref $icomps eq 'ARRAY';
+       unless ref $comps && ref $comps eq 'ARRAY';
     my $pcomps;                 # project components
-    foreach my $c (@{$icomps}) {
+    foreach my $c (@{$comps}) {
        next if ref $c;
        if ($c =~ /\D/) {
            # It's a component name. Let us convert it into its id.
@@ -196,11 +199,12 @@ sub _convert_components {
 }
 
 sub _convert_versions {
-    my ($self, $iversions, $project) = @_;  # issue versions, project key
-    croak "The '$iversions' value must be a ARRAY ref.\n"
-       unless ref $iversions && ref $iversions eq 'ARRAY';
+    my ($self, $hash, $key, $project) = @_;
+    my $versions = $hash->{$key};
+    croak "The '$versions' value must be a ARRAY ref.\n"
+       unless ref $versions && ref $versions eq 'ARRAY';
     my $pversions;
-    foreach my $v (@{$iversions}) {
+    foreach my $v (@{$versions}) {
        next if ref $v;
        if ($v =~ /\D/) {
            # It is a version name. Let us convert it into its id.
@@ -215,22 +219,23 @@ sub _convert_versions {
 }
 
 sub _convert_duedate {
-    my ($self, $duedate) = @_;
-    if (my ($year, $month, $day) = ($duedate =~ /^(\d{4})-(\d{2})-(\d{2})T/)) {
+    my ($self, $hash) = @_;
+    if (my ($year, $month, $day) = ($hash->{duedate} =~ /^(\d{4})-(\d{2})-(\d{2})/)) {
 	$month >= 1 and $month <= 12
-	    or croak "Invalid duedate ($duedate)";
-	$duedate = join(
+	    or croak "Invalid duedate ($hash->{duedate})";
+	$hash->{duedate} = join(
 	    '/',
 	    $day,
 	    qw/zero Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dez/[$month],
 	    substr($year, 2, 2),
 	);
     }
-    return $duedate;
+    return;
 }
 
 sub _convert_custom_fields {
-    my ($self, $custom_fields) = @_;
+    my ($self, $hash) = @_;
+    my $custom_fields = $hash->{custom_fields};
     croak "The 'custom_fields' value must be a HASH ref.\n"
         unless ref $custom_fields && ref $custom_fields eq 'HASH';
     my %id2values;
@@ -243,8 +248,19 @@ sub _convert_custom_fields {
         }
         $id2values{$id} = ref $values ? $values : [$values];
     }
-    return \%id2values;
+    $hash->{custom_fields} = \%id2values;
+    return;
 }
+
+my %_converters = (
+    affectsVersions => \&_convert_versions,
+    components      => \&_convert_components,
+    custom_fields   => \&_convert_custom_fields,
+    duedate         => \&_convert_duedate,
+    fixVersions     => \&_convert_versions,
+    priority        => \&_convert_priority,
+    type            => \&_convert_type,
+);
 
 =item B<create_issue> HASH_REF
 
@@ -270,7 +286,7 @@ of version I<names> or I<ids> instead of a list of C<RemoteVersion>
 objects.
 
 =item C<duedate> can be specified in the ISO standard format
-(YYYY-MM-DDT...) instead of the required format (d/MMM/yy).
+(YYYY-MM-DD...) instead of the required format (d/MMM/yy).
 
 =back
 
@@ -295,35 +311,14 @@ sub create_issue
             unless exists $hash->{$field};
     }
 
-    # Convert type names
-    $hash->{type} = $self->_convert_type($hash->{type});
-
-    # Convert priority names
-    $hash->{priority} = $self->_convert_priority($hash->{priority})
-        if exists $hash->{priority};
-
-    # Convert component names
-    $self->_convert_components($hash->{components}, $hash->{project})
-        if exists $hash->{components};
-
-    # Convert version ids and names into RemoteVersion objects
-    for my $versions (qw/fixVersions affectsVersions/) {
-        $self->_convert_versions($hash->{$versions}, $hash->{project})
-            if exists $hash->{$versions};
+    # Convert some fields' values
+    foreach my $field (grep {exists $_converters{$_}} keys %$hash) {
+	&{$_converters{$field}}($self, $hash, $field, $hash->{project});
     }
 
-    # Convert duedate
-    $hash->{duedate} = $self->_convert_duedate($hash->{duedate})
-	if exists $hash->{duedate};
-
-    # Convert custom fields
-    if (my $custom_fields = delete $hash->{custom_fields}) {
-        my @cfvs;
-        my $id2values = $self->_convert_custom_fields($custom_fields);
-        while (my ($id, $values) = each %$id2values) {
-            push @cfvs, RemoteCustomFieldValue->new($id, $values);
-        }
-        $hash->{customFieldValues} = \@cfvs;
+    # Substitute customFieldValues for custom_fields
+    if (my $cfs = delete $hash->{custom_fields}) {
+        $hash->{customFieldValues} = [map {RemoteCustomFieldValue->new($_, $cfs->{$_})} keys %$cfs];
     }
 
     return $self->createIssue($hash);
@@ -659,39 +654,32 @@ sub progress_workflow_action_safely {
         }
     }
 
-    # Convert priority names
-    $params->{priority} = $self->_convert_priority($params->{priority})
-        if exists $params->{priority};
-
-    # Convert component names
-    if (exists $params->{components}) {
-        $self->_convert_components($params->{components}, $project);
-        # Now convert objects into ids.
-        $_ = $_->{id} foreach @{$params->{components}};
+    # Convert some fields' values
+    foreach my $field (grep {exists $_converters{$_}} keys %$params) {
+	&{$_converters{$field}}($self, $params, $field, $project);
     }
 
-    # Convert version names and RemoteVersion objects into version ids
-    for my $versions (qw/fixVersions affectsVersions/) {
-        if (exists $params->{$versions}) {
-            $self->_convert_versions($params->{$versions}, $project);
-            # Now convert objects into ids.
-            $_ = $_->{id} foreach @{$params->{$versions}};
+    # Convert RemoteComponent objects into component ids
+    if (my $comps = $params->{components}) {
+        $_ = $_->{id} foreach @$comps;
+    }
+
+    # Convert RemoteVersion objects into version ids
+    for my $field (qw/fixVersions affectsVersions/) {
+        if (my $versions = $params->{$field}) {
+            $_ = $_->{id} foreach @$versions;
         }
     }
-    if (exists $params->{affectsVersions}) {
-        # This is due to a bug in JIRA: http://jira.atlassian.com/browse/JRA-12300
-        $params->{versions} = delete $params->{affectsVersions};
+    # Due to a bug in JIRA
+    # (http://jira.atlassian.com/browse/JRA-12300) we have to
+    # substitute 'versions' for the 'affectsVersions' key
+    if (my $versions = delete $params->{affectsVersions}) {
+        $params->{versions} = $versions;
     }
 
-    # Convert duedate format
-    if (exists $params->{duedate}) {
-	$params->{duedate} = $self->_convert_duedate($params->{duedate});
-    }
-
-    # Convert custom fields
+    # Expand the custom_fields hash into the custom fields themselves.
     if (my $custom_fields = delete $params->{custom_fields}) {
-        my $id2values = $self->_convert_custom_fields($custom_fields);
-        while (my ($id, $values) = each %$id2values) {
+        while (my ($id, $values) = each %$custom_fields) {
             $params->{$id} = $values;
         }
     }
