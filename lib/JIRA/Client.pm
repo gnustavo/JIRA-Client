@@ -123,7 +123,7 @@ sub new {
     %{$soap->typelookup()} = (default => [0, sub {1}, 'as_string']);
 
     my $auth = $soap->login($user, $pass);
-    die _fault_details($auth), "\n"
+    croak _fault_details($auth), "\n"
         if defined $auth->fault();
 
     my $self = {
@@ -902,7 +902,7 @@ sub AUTOLOAD {
     }
 
     my $call = $self->{soap}->call($method, $self->{auth}, @args);
-    die _fault_details($call), "\n"
+    croak _fault_details($call), "\n"
         if defined $call->fault();
     return $call->result();
 }
