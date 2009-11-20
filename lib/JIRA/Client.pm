@@ -218,7 +218,7 @@ sub _convert_duedate {
     my ($self, $duedate) = @_;
     if (my ($year, $month, $day) = ($duedate =~ /^(\d{4})-(\d{2})-(\d{2})T/)) {
 	$month >= 1 and $month <= 12
-	    or croak "Invalid duedate ($params->{duedate})";
+	    or croak "Invalid duedate ($duedate)";
 	$duedate = join(
 	    '/',
 	    $day,
@@ -685,7 +685,7 @@ sub progress_workflow_action_safely {
 
     # Convert duedate format
     if (exists $params->{duedate}) {
-	$params->{duedate} = $self->_convert_duedate{$params->{duedate}};
+	$params->{duedate} = $self->_convert_duedate($params->{duedate});
     }
 
     # Convert custom fields
