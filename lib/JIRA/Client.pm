@@ -214,6 +214,21 @@ sub _convert_versions {
     return;
 }
 
+sub _convert_duedate {
+    my ($self, $duedate) = @_;
+    if (my ($year, $month, $day) = ($duedate =~ /^(\d{4})-(\d{2})-(\d{2})T/)) {
+	$month >= 1 and $month <= 12
+	    or croak "Invalid duedate ($params->{duedate})";
+	$duedate = join(
+	    '/',
+	    $day,
+	    qw/zero Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dez/[$month],
+	    substr($year, 2, 2),
+	);
+    }
+    return $duedate;
+}
+
 sub _convert_custom_fields {
     my ($self, $custom_fields) = @_;
     croak "The 'custom_fields' value must be a HASH ref.\n"
@@ -254,6 +269,9 @@ I<ids> instead of a list of C<RemoteComponent> objects.
 of version I<names> or I<ids> instead of a list of C<RemoteVersion>
 objects.
 
+=item C<duedate> can be specified in the ISO standard format
+(YYYY-MM-DDT...) instead of the required format (d/MMM/yy).
+
 =back
 
 Moreover, it accepts a 'magic' field called B<custom_fields> to make
@@ -293,6 +311,10 @@ sub create_issue
         $self->_convert_versions($hash->{$versions}, $hash->{project})
             if exists $hash->{$versions};
     }
+
+    # Convert duedate
+    $hash->{duedate} = $self->_convert_duedate($hash->{duedate})
+	if exists $hash->{duedate};
 
     # Convert custom fields
     if (my $custom_fields = delete $hash->{custom_fields}) {
@@ -659,6 +681,11 @@ sub progress_workflow_action_safely {
     if (exists $params->{affectsVersions}) {
         # This is due to a bug in JIRA: http://jira.atlassian.com/browse/JRA-12300
         $params->{versions} = delete $params->{affectsVersions};
+    }
+
+    # Convert duedate format
+    if (exists $params->{duedate}) {
+	$params->{duedate} = $self->_convert_duedate{$params->{duedate}};
     }
 
     # Convert custom fields
