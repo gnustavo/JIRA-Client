@@ -178,6 +178,18 @@ sub _convert_priority {
     return;
 }
 
+sub _convert_resolution {
+    my ($self, $hash) = @_;
+    my $resolution = $hash->{resolution};
+    if ($resolution =~ /\D/) {
+        my $resolutions = $self->get_resolutions();
+        croak "There is no resolution called '$resolution'.\n"
+            unless exists $resolutions->{$resolution};
+        $hash->{resolution} = $resolutions->{$resolution}{name};
+    }
+    return;
+}
+
 sub _convert_components {
     my ($self, $hash, $key, $project) = @_;
     my $comps = $hash->{components};
@@ -259,6 +271,7 @@ my %_converters = (
     duedate         => \&_convert_duedate,
     fixVersions     => \&_convert_versions,
     priority        => \&_convert_priority,
+    resolution      => \&_convert_resolution,
     type            => \&_convert_type,
 );
 
@@ -333,14 +346,7 @@ RemoteIssueType objects describing them.
 
 sub get_issue_types {
     my ($self) = @_;
-    unless (defined $self->{cache}{issue_types}) {
-        my %issue_types;
-        my $types = $self->getIssueTypes();
-        foreach my $type (@$types) {
-            $issue_types{$type->{name}} = $type;
-        }
-        $self->{cache}{issue_types} = \%issue_types;
-    }
+    $self->{cache}{issue_types} ||= {map {$_->{name} => $_} @{$self->getIssueTypes()}};
     return $self->{cache}{issue_types};
 }
 
@@ -353,15 +359,21 @@ RemotePriority objects describing them.
 
 sub get_priorities {
     my ($self) = @_;
-    unless (exists $self->{cache}{priorities}) {
-        my %priorities;
-        my $prios = $self->getPriorities();
-        foreach my $prio (@$prios) {
-            $priorities{$prio->{name}} = $prio;
-        }
-        $self->{cache}{priorities} = \%priorities;
-    }
+    $self->{cache}{priorities} ||= {map {$_->{name} => $_} @{$self->getPriorities()}};
     return $self->{cache}{priorities};
+}
+
+=item B<get_resolutions>
+
+Returns a hash mapping a server's resolution names to the
+RemoteResolution objects describing them.
+
+=cut
+
+sub get_resolutions {
+    my ($self) = @_;
+    $self->{cache}{resolutions} ||= {map {$_->{name} => $_} @{$self->getResolutions()}};
+    return $self->{cache}{resolutions};
 }
 
 =item B<get_custom_fields>
@@ -379,14 +391,7 @@ keeps the custom fields information in a cache.
 
 sub get_custom_fields {
     my ($self) = @_;
-    unless (exists $self->{cache}{custom_fields}) {
-        my %custom_fields;
-        my $cfs = $self->getCustomFields();
-        foreach my $cf (@$cfs) {
-            $custom_fields{$cf->{name}} = $cf;
-        }
-        $self->{cache}{custom_fields} = \%custom_fields;
-    }
+    $self->{cache}{custom_fields} ||= {map {$_->{name} => $_} @{$self->getCustomFields()}};
     return $self->{cache}{custom_fields};
 }
 
@@ -415,16 +420,8 @@ RemoteComponent objects describing them.
 
 sub get_components {
     my ($self, $project_key) = @_;
-    my $cache = $self->{cache}{components};
-    unless (exists $cache->{$project_key}) {
-        my %components;
-        my $components = $self->getComponents($project_key);
-        foreach my $component (@$components) {
-            $components{$component->{name}} = $component;
-        }
-        $cache->{$project_key} = \%components;
-    }
-    return $cache->{$project_key};
+    $self->{cache}{components}{$project_key} ||= {map {$_->{name} => $_} @{$self->getComponents($project_key)}};
+    return $self->{cache}{components}{$project_key};
 }
 
 =item B<get_versions> PROJECT_KEY
@@ -436,16 +433,8 @@ objects describing them.
 
 sub get_versions {
     my ($self, $project_key) = @_;
-    my $cache = $self->{cache}{versions};
-    unless (exists $cache->{$project_key}) {
-        my %versions;
-        my $versions = $self->getVersions($project_key);
-        foreach my $version (@$versions) {
-            $versions{$version->{name}} = $version;
-        }
-        $cache->{$project_key} = \%versions;
-    }
-    return $cache->{$project_key};
+    $self->{cache}{versions}{$project_key} ||= {map {$_->{name} => $_} @{$self->getVersions($project_key)}};
+    return $self->{cache}{versions}{$project_key};
 }
 
 =item B<get_favourite_filters>
@@ -457,16 +446,8 @@ ids.
 
 sub get_favourite_filters {
     my ($self) = @_;
-    my $cache = $self->{cache};
-    unless (exists $cache->{filters}) {
-        my %filters;
-        my $filters = $self->getFavouriteFilters();
-        foreach my $filter (@$filters) {
-            $filters{$filter->{name}} = $filter;
-        }
-        $cache->{filters} = \%filters;
-    }
-    return $cache->{filters};
+    $self->{cache}{filters} ||= {map {$_->{name} => $_} @{$self->getFavouriteFilters()}};
+    return $self->{cache}{filters};
 }
 
 =item B<set_filter_iterator> FILTER [, CACHE_SIZE]
