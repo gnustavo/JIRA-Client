@@ -1,5 +1,13 @@
 Revision history for JIRA-Client
 
+0.21    2009-11-21
+
+ 	Adds update_issue method.
+	Adds lots of implicit conversions and document them better.
+	Can set duedate field with a DateTime object.
+	Adds a examples directory with a single example so far.
+	Adds resolution conversion from names.
+
 0.20    2009-11-20
 
 	Converts the 'duedate' field from the ISO format (YYYY-MM-DD)
