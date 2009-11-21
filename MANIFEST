@@ -3,6 +3,7 @@ MANIFEST
 Makefile.PL
 README
 TODO
+examples/jiraclient.pl
 lib/JIRA/Client.pm
 t/00-load.t
 t/01-online.t
