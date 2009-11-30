@@ -1,5 +1,11 @@
 Revision history for JIRA-Client
 
+0.22    2009-11-30
+
+	Corrects a bug
+	[http://rt.cpan.org/Ticket/Display.html?id=52076] that
+	affected the methods progressWorkflowAction and updateIssue.
+
 0.21    2009-11-21
 
  	Adds update_issue method.
