@@ -774,6 +774,130 @@ sub get_issue_custom_field_values {
     return wantarray ? @values : \@values;
 }
 
+=item B<attach_files_to_issue> ISSUE, FILES...
+
+This method attaches one or more files to an issue. The ISSUE argument
+may be an issue key or a B<RemoteIssue> object. The attachments may be
+specified in two ways:
+
+=over 4
+
+=item STRING
+
+A string denotes a filename to be open and read. In this case, the
+attachment name is the file's basename.
+
+=item HASHREF
+
+When you want to specify a different name to the attachment or when
+you already have an IO object (a GLOB, a IO::File, or a FileHandle)
+you must pass them as values of a hash. The keys of the hash are taken
+as the attachment name. You can specify more than one attachment in
+each hash.
+
+=back
+
+The method retuns the value returned by the
+B<addBase64EncodedAttachmentsToIssue> API method.
+
+In the example below, we attach three files to the issue TST-1. The
+first is called C<file1.txt> and its contents are read from
+C</path/to/file1.txt>. The second is called C<text.txt> and its
+contents are read from C</path/to/file2.txt>. the third is called
+C<me.jpg> and its contents are read from the object refered to by
+C<$fh>.
+
+    $jira->attach_files_to_issue('TST-1',
+                                 '/path/to/file1.txt',
+                                 {
+                                     'text.txt' => '/path/to/file2.txt',
+                                     'me.jpg'   => $fh,
+                                 },
+    );
+
+=cut
+
+sub attach_files_to_issue {
+    my ($self, $issue, @files) = @_;
+
+    # First we process the @files specification. Filenames are pushed
+    # in @filenames and @attachments will end up with IO objects from
+    # which the file contents are going to be read later.
+
+    my (@filenames, @attachments);
+
+    for my $file (@files) {
+	if (not ref $file) {
+	    require File::Basename;
+	    push @filenames, File::Basename::basename($file);
+	    open my $fh, '<:raw', $file
+		or croak "Can't open $file: $!\n";
+	    push @attachments, $fh;
+	}
+	elsif (ref $file eq 'HASH') {
+	    while (my ($name, $contents) = each %$file) {
+		push @filenames, $name;
+		if (not ref $contents) {
+		    open my $fh, '<:raw', $contents
+			or croak "Can't open $contents: $!\n";
+		    push @attachments, $fh;
+		} elsif (ref($contents) =~ /^(?:GLOB|IO::File|FileHandle)$/) {
+		    push @attachments, $contents;
+		} else {
+		    croak "Invalid content specification for file $name.\n";
+		}
+	    }
+	}
+	else {
+	    croak "Files must be specified by STRINGs or HASHes, not by " . ref($file) . "s\n";
+	}
+    }
+
+    # Now we have to read all file contents and encode them to Base64.
+
+    require MIME::Base64;
+    for my $i (0 .. $#attachments) {
+	my $fh = $attachments[$i];
+	my $attachment = '';
+	my $chars_read;
+	while ($chars_read = read $fh, my $buf, 57*72) {
+	    $attachment .= MIME::Base64::encode_base64($buf);
+	}
+	defined $chars_read
+	    or croak "Error reading '$filenames[$i]': $!\n";
+	$attachments[$i] = $attachment;
+    }
+
+    return $self->addBase64EncodedAttachmentsToIssue($issue, \@filenames, \@attachments);
+}
+
+=item B<attach_strings_to_issue> ISSUE, HASHREF
+
+This method attaches one or more strings to an issue. The ISSUE
+argument may be an issue key or a B<RemoteIssue> object. The
+attachments are specified by a HASHREF in which the keys denote the
+file names and the values their contents.
+
+The method retuns the value returned by the
+B<addBase64EncodedAttachmentsToIssue> API method.
+
+=cut
+
+sub attach_strings_to_issue {
+    my ($self, $issue, $hash) = @_;
+
+    require MIME::Base64;
+
+    my (@filenames, @attachments);
+
+    while (my ($filename, $contents) = each %$hash) {
+	push @filenames,   $filename;
+	push @attachments, MIME::Base64::encode_base64($contents);
+    }
+
+    return $self->addBase64EncodedAttachmentsToIssue($issue, \@filenames, \@attachments);
+}
+
 =back
 
 =head1 OTHER CONSTRUCTORS
