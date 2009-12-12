@@ -1,5 +1,17 @@
 Revision history for JIRA-Client
 
+0.23    2009-12-12
+
+	Corrects the SOAP serialization of arrays to enable the use of
+	the add*AttachmentsToIssue API methods. Thanks to Jon Connell
+	who reported the problem.
+
+	Implements the methods attach_files_to_issue and
+	attach_strings_to_issue to make it easier to attach things.
+
+	The method create_issue now accepts an optional Security Level
+	argument. Thanks to Lance Selvidge for the suggestion.
+
 0.22    2009-11-30
 
 	Corrects a bug
