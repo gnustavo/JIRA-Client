@@ -882,8 +882,8 @@ package JIRA::Client;
 # zero-based, after the authentication token.
 
 my %typeof = (
-    addAttachmentsToIssue              	     => {0 => \&_cast_issue_key, 3 => 'base64Binary'},
-    addBase64EncodedAttachmentsToIssue 	     => {0 => \&_cast_issue_key},
+    addAttachmentsToIssue              	     => \&_cast_attachments,
+    addBase64EncodedAttachmentsToIssue 	     => \&_cast_base64encodedattachments,
     addComment                         	     => {0 => \&_cast_issue_key, 1 => \&_cast_remote_comment},
     addWorklogAndAutoAdjustRemainingEstimate => {0 => \&_cast_issue_key},
     addWorklogAndRetainRemainingEstimate     => {0 => \&_cast_issue_key},
@@ -947,6 +947,35 @@ sub _cast_remote_field_values {
     return $arg;
 }
 
+sub _cast_attachments {
+    my ($self, $method, $args) = @_;
+    # The addAttachmentsToIssue method is deprecated and requires too
+    # much overhead to pass the file contents over the wire. Here we
+    # convert the arguments to call the newer
+    # addBase64EncodedAttachmentsToIssue method instead.
+    require MIME::Base64;
+    for my $content (@{$args->[2]}) {
+	$content = MIME::Base64::encode_base64($content);
+    }
+    $$method = 'addBase64EncodedAttachmentsToIssue';
+    _cast_base64encodedattachments($self, $method, $args);
+    return;
+}
+
+sub _cast_base64encodedattachments {
+    my ($self, $method, $args) = @_;
+    $args->[0] = _cast_issue_key($self, $args->[0]);
+    # We have to set the names of the arrays and of its elements
+    # because the default naming isn't properly understood by JIRA.
+    for my $i (1 .. 2) {
+	$args->[$i] = SOAP::Data->name(
+	    "array$i",
+	    [map {SOAP::Data->name("elem$i", $_)} @{$args->[$i]}],
+	);
+    }
+    return;
+}
+
 # All methods follow the same call convention, which makes it easy to
 # implement them all with an AUTOLOAD.
 
@@ -957,29 +986,30 @@ sub AUTOLOAD {
 
     # Perform any non-default type coersion
     if (my $typeof = $typeof{$method}) {
-        while (my ($i, $type) = each %$typeof) {
-            if (ref $type) {
-		ref $type eq 'CODE'
-		    or croak "Invalid coersion spec to (", ref($type), ").\n";
-		$args[$i] = $type->($self, $args[$i]);
-            }
-            elsif (! ref $args[$i]) {
-                $args[$i] = SOAP::Data->type($type => $args[$i]);
-            }
-            elsif (ref $args[$i] eq 'ARRAY') {
-                foreach (@{$args[$i]}) {
-                    $_ = SOAP::Data->type($type => $_);
-                }
-            }
-            elsif (ref $args[$i] eq 'HASH') {
-                foreach (values %{$args[$i]}) {
-                    $_ = SOAP::Data->type($type => $_);
-                }
-            }
-            else {
-                croak "Can't coerse argument $i of method $AUTOLOAD.\n";
-            }
-        }
+	if (ref $typeof eq 'HASH') {
+	    while (my ($i, $type) = each %$typeof) {
+		if (ref $type) {
+		    ref $type eq 'CODE'
+			or croak "Invalid coersion spec to (", ref($type), ").\n";
+		    $args[$i] = $type->($self, $args[$i]);
+		} elsif (! ref $args[$i]) {
+		    $args[$i] = SOAP::Data->type($type => $args[$i]);
+		} elsif (ref $args[$i] eq 'ARRAY') {
+		    foreach (@{$args[$i]}) {
+			$_ = SOAP::Data->type($type => $_);
+		    }
+		} elsif (ref $args[$i] eq 'HASH') {
+		    foreach (values %{$args[$i]}) {
+			$_ = SOAP::Data->type($type => $_);
+		    }
+		} else {
+		    croak "Can't coerse argument $i of method $AUTOLOAD.\n";
+		}
+	    }
+	}
+	elsif (ref $typeof eq 'CODE') {
+	    $typeof->($self, \$method, \@args);
+	}
     }
 
     my $call = $self->{soap}->call($method, $self->{auth}, @args);
