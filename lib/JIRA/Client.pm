@@ -188,6 +188,17 @@ sub _convert_resolution {
     return;
 }
 
+sub _convert_security_level {
+    my ($self, $seclevel) = @_;
+    if ($seclevel =~ /\D/) {
+        my $seclevels = $self->get_security_levels();
+        croak "There is no security level called '$seclevel'.\n"
+            unless exists $seclevels->{$seclevel};
+        $seclevel = $seclevels->{$seclevel}{id};
+    }
+    return $seclevel;
+}
+
 sub _convert_components {
     my ($self, $hash, $key, $project) = @_;
     my $comps = $hash->{components};
@@ -283,11 +294,11 @@ my %_converters = (
     type            => \&_convert_type,
 );
 
-=item B<create_issue> HASH_REF
+=item B<create_issue> HASH_REF [, SECURITYLEVEL]
 
 Creates a new issue given a hash containing the initial values for its
-fields. The hash must specify at least the fields C<project>,
-C<summary>, and C<type>.
+fields and, optionally, a security-level. The hash must specify at
+least the fields C<project>, C<summary>, and C<type>.
 
 This is an easier to use version of the createIssue API method. For
 once it accepts symbolic values for some of the issue fields that the
@@ -322,7 +333,7 @@ conversion the user needs administrator rights.
 
 sub create_issue
 {
-    my ($self, $hash) = @_;
+    my ($self, $hash, $seclevel) = @_;
     croak "create_issue requires an argument.\n"
         unless defined $hash;
     croak "create_issue's argument must be a HASH ref.\n"
@@ -342,7 +353,12 @@ sub create_issue
         $hash->{customFieldValues} = [map {RemoteCustomFieldValue->new($_, $cfs->{$_})} keys %$cfs];
     }
 
-    return $self->createIssue($hash);
+    if (defined $seclevel) {
+	return $self->createIssueWithSecurityLevel($hash, _convert_security_level($self, $seclevel));
+    }
+    else {
+	return $self->createIssue($hash);
+    }
 }
 
 =item B<update_issue> ISSUE_OR_KEY, HASH_REF
@@ -446,6 +462,19 @@ sub get_resolutions {
     my ($self) = @_;
     $self->{cache}{resolutions} ||= {map {$_->{name} => $_} @{$self->getResolutions()}};
     return $self->{cache}{resolutions};
+}
+
+=item B<get_security_levels>
+
+Returns a hash mapping a server's security level names to the
+RemoteSecurityLevel objects describing them.
+
+=cut
+
+sub get_security_levels {
+    my ($self) = @_;
+    $self->{cache}{seclevels} ||= {map {$_->{name} => $_} @{$self->getSecurityLevels()}};
+    return $self->{cache}{seclevels};
 }
 
 =item B<get_custom_fields>
