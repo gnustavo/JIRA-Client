@@ -107,11 +107,6 @@ credentials that will be used to authenticate into JIRA.
 
 =cut
 
-sub _fault_details {
-    my $r = shift;
-    return join(', ', $r->faultcode(), $r->faultstring());
-}
-
 sub new {
     my ($class, $base_url, $user, $pass) = @_;
 
@@ -121,7 +116,7 @@ sub new {
     %{$soap->typelookup()} = (default => [0, sub {1}, 'as_string']);
 
     my $auth = $soap->login($user, $pass);
-    croak _fault_details($auth), "\n"
+    croak $auth->faultcode(), ', ', $auth->faultstring()
         if defined $auth->fault();
 
     my $self = {
@@ -1166,7 +1161,7 @@ sub AUTOLOAD {
     }
 
     my $call = $self->{soap}->call($method, $self->{auth}, @args);
-    croak _fault_details($call), "\n"
+    croak $call->faultcode(), ', ', $call->faultstring()
         if defined $call->fault();
     return $call->result();
 }
