@@ -121,7 +121,7 @@ sub new {
 
     my $self = {
         soap  => $soap,
-        auth  => scalar($auth->result()),
+        auth  => $auth->result(),
         iter  => undef,
         cache => {
             components => {}, # project_key => {name => RemoteComponent}
