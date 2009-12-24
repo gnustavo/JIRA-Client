@@ -252,7 +252,7 @@ sub _convert_duedate {
 	$hash->{duedate} = join(
 	    '/',
 	    $day,
-	    qw/zero Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dez/[$month],
+	    qw/zero Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec/[$month],
 	    substr($year, 2, 2),
 	);
     }
