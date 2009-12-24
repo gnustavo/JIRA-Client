@@ -1,5 +1,10 @@
 Revision history for JIRA-Client
 
+0.24    2009-12-24
+
+	Corrects one typo suggested by Andrey Belous and denies the
+	attachment of empty files, as suggested by Jon Connell.
+
 0.23    2009-12-12
 
 	Corrects the SOAP serialization of arrays to enable the use of
