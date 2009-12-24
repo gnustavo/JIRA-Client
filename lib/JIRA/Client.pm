@@ -889,6 +889,8 @@ sub attach_files_to_issue {
 	}
 	defined $chars_read
 	    or croak "Error reading '$filenames[$i]': $!\n";
+	length $attachment
+	    or croak "Can't attach empty file '$filenames[$i]'\n";
 	$attachments[$i] = $attachment;
     }
 
