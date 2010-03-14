@@ -84,7 +84,7 @@ $jira->progress_workflow_action_safely(
 
 
 # This works if you have the right permissions
-my $user = $jira->createUser("testuser2", "testuser2", "SOAP-created user", "newuser@localhost");
+my $user = $jira->createUser("testuser2", "testuser2", "SOAP-created user", 'newuser@localhost');
 print "Created user $user\n";
 
 my $group = $jira->getGroup("jira-developers");
