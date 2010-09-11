@@ -178,7 +178,7 @@ sub _convert_resolution {
         my $resolutions = $self->get_resolutions();
         croak "There is no resolution called '$resolution'.\n"
             unless exists $resolutions->{$resolution};
-        $hash->{resolution} = $resolutions->{$resolution}{name};
+        $hash->{resolution} = $resolutions->{$resolution}{id};
     }
     return;
 }
