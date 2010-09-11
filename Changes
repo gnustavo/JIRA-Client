@@ -1,5 +1,16 @@
 Revision history for JIRA-Client
 
+0.25	2010-09-11
+
+	Implements method get_statuses, courtesy of michael AT
+	riceclan.org.
+
+	Fixes a problem in _convert_resolution, courtesy of KBeal AT
+	crosscountry-auto.com.
+	
+	Fixes a typo in examples/jiraclient.pl, courtesy of cosimo AT
+	cpan.org.
+
 0.24    2009-12-24
 
 	Corrects one typo suggested by Andrey Belous and denies the
