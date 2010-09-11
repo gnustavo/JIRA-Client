@@ -433,6 +433,19 @@ sub get_issue_types {
     return $self->{cache}{issue_types};
 }
 
+=item B<get_statuses>
+
+Returns a hash mapping the server's status names to the
+RemoteStatus objects describing them.
+
+=cut
+
+sub get_statuses {
+    my ($self) = @_;
+    $self->{cache}{statuses} ||= {map {$_->{name} => $_} @{$self->getStatuses()}};
+    return $self->{cache}{statuses};
+}
+
 =item B<get_priorities>
 
 Returns a hash mapping a server's priorities names to the
