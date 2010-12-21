@@ -1,5 +1,11 @@
 Revision history for JIRA-Client
 
+0.26	2010-12-21
+
+	Implements some magic to make it easier to specify Cascading
+	field values in the create_issue and update_issue
+	methods. This was suggested by Keith Hackworth.
+
 0.25	2010-09-11
 
 	Implements method get_statuses, courtesy of michael AT
