@@ -139,8 +139,8 @@ sub DESTROY {
     # me so far. Getting rid of the DESTROY method doesn't work either
     # because it would trigger a call to AUTOLOAD which is unable to
     # do it correctly. I think a call to logout is proper here to shut
-    # down the SOAP connection cleanly, but it doesn't seems to hurt
-    # to not call it.
+    # down the SOAP connection cleanly, but it doesn't seem to hurt
+    # not to call it.
 
     # shift->logout();
 }
@@ -266,13 +266,39 @@ sub _convert_custom_fields {
         unless ref $custom_fields && ref $custom_fields eq 'HASH';
     my %id2values;
     while (my ($id, $values) = each %$custom_fields) {
-        unless ($id =~ /^customfield_\d+$/) {
+	my $realid = $id;
+        unless ($realid =~ /^customfield_\d+$/) {
             my $cfs = $self->get_custom_fields();
             croak "Can't find custom field named '$id'.\n"
                 unless exists $cfs->{$id};
-            $id = $cfs->{$id}{id};
+            $realid = $cfs->{$id}{id};
         }
-        $id2values{$id} = ref $values ? $values : [$values];
+
+	# Custom field values must be specified as ARRAYs but we allow for some short-cuts.
+	if (! ref $values) {
+	    $id2values{$realid} = [$values];
+	} elsif (ref $values eq 'ARRAY') {
+	    $id2values{$realid} = $values;
+	} elsif (ref $values eq 'HASH') {
+	    # This is a short-cut for a Cascading select field, which
+	    # must be specified like this: http://tinyurl.com/2bmthoa
+	    # The short-cut requires a HASH where each cascading level
+	    # is indexed by its level number, starting at zero.
+	    foreach my $level (sort {$a <=> $b} keys %$values) {
+		my $level_values = $values->{$level};
+		$level_values = [$level_values] unless ref $level_values;
+		if ($level eq '0') {
+		    # The first level doesn't have a colon
+		    $id2values{$realid} = $level_values
+		} elsif ($level =~ /^\d+$/) {
+		    $id2values{"$realid:$level"} = $level_values;
+		} else {
+		    croak "Invalid cascading field values level spec ($level). It must be a natural number.\n";
+		}
+	    }
+	} else {
+	    croak "Custom field '$id' got a '", ref($values), "' reference as a value.\nValues can only be specified as scalars, ARRAYs, or HASHes though.\n";
+	}
     }
     $hash->{custom_fields} = \%id2values;
     return;
@@ -323,6 +349,29 @@ field to its value. The custom field can be specified by its id (in
 the format B<customfield_NNNNN>) or by its name, in which case the
 method will try to convert it to its id. Note that to do that
 conversion the user needs administrator rights.
+
+A simple custom field value can be specified by a scalar, which will
+be properly placed inside an ARRAY in order to satisfy the
+B<RemoteFieldValue>'s structure.
+
+Cascading select fields are properly specified like this:
+http://tinyurl.com/2bmthoa. The magic short-cut requires a HASH where
+each cascading level is indexed by its level number, starting at
+zero. So, instead of specifying it like this:
+
+    {
+        id => 'customfield_10011',
+        values => [ SOAP::Data->type(string => '10031' ) ]
+    },
+    {
+        id => 'customfield_10011:1',
+        values => [ SOAP::Data->type(string => '10188') ],
+    },
+
+You can do it like this:
+
+    {customfield_10011 => {'0' => 10031, '1' => 10188}},
+
 
 =cut
 
