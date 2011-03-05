@@ -1,5 +1,10 @@
 Revision history for JIRA-Client
 
+0.27	2011-03-05
+
+	Properly casts RemoteProjectRole objects in several
+	methods. This was suggested by Philippe MARTIN.
+
 0.26	2010-12-21
 
 	Implements some magic to make it easier to specify Cascading

@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:                JIRA-Client
-version:             0.26
+version:             0.27
 abstract:            An extended interface to JIRA's SOAP API.
 license:             perl
 author:              
