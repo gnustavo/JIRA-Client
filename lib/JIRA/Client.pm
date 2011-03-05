@@ -1094,21 +1094,27 @@ package JIRA::Client;
 # zero-based, after the authentication token.
 
 my %typeof = (
+    addActorsToProjectRole                   => {1 => \&_cast_remote_project_role},
     addAttachmentsToIssue              	     => \&_cast_attachments,
     addBase64EncodedAttachmentsToIssue 	     => \&_cast_base64encodedattachments,
     addComment                         	     => {0 => \&_cast_issue_key, 1 => \&_cast_remote_comment},
+    addDefaultActorsToProjectRole            => {1 => \&_cast_remote_project_role},
     addWorklogAndAutoAdjustRemainingEstimate => {0 => \&_cast_issue_key},
     addWorklogAndRetainRemainingEstimate     => {0 => \&_cast_issue_key},
     addWorklogWithNewRemainingEstimate       => {0 => \&_cast_issue_key},
     archiveVersion                     	     => {2 => 'boolean'},
     createIssueWithSecurityLevel       	     => {1 => 'long'},
+    createProjectRole                        => {0 => \&_cast_remote_project_role},
     deleteIssue                 	     => {0 => \&_cast_issue_key},
     deleteProjectAvatar                	     => {0 => 'long'},
-    deleteProjectRole                  	     => {1 => 'boolean'},
+    deleteProjectRole                  	     => {0 => \&_cast_remote_project_role, 1 => 'boolean'},
+    getAssociatedNotificationSchemes         => {0 => \&_cast_remote_project_role},
+    getAssociatedPermissionSchemes           => {0 => \&_cast_remote_project_role},
     getAttachmentsFromIssue           	     => {0 => \&_cast_issue_key},
     getAvailableActions           	     => {0 => \&_cast_issue_key},
     getComment                         	     => {0 => 'long'},
     getComments                        	     => {0 => \&_cast_issue_key},
+    getDefaultRoleActors                     => {0 => \&_cast_remote_project_role},
     getFieldsForAction                 	     => {0 => \&_cast_issue_key},
     getFieldsForEdit                 	     => {0 => \&_cast_issue_key},
     getIssue	                 	     => {0 => \&_cast_issue_key},
@@ -1121,6 +1127,7 @@ my %typeof = (
     getProjectAvatars                  	     => {1 => 'boolean'},
     getProjectById                     	     => {0 => 'long'},
     getProjectRole                     	     => {0 => 'long'},
+    getProjectRoleActors               	     => {0 => \&_cast_remote_project_role},
     getProjectWithSchemesById          	     => {0 => 'long'},
     getResolutionDateById              	     => {0 => 'long'},
     getResolutionDateByKey             	     => {0 => \&_cast_issue_key},
@@ -1128,8 +1135,11 @@ my %typeof = (
     getWorklogs		             	     => {0 => \&_cast_issue_key},
     hasPermissionToCreateWorklog       	     => {0 => \&_cast_issue_key},
     progressWorkflowAction             	     => {0 => \&_cast_issue_key, 2 => \&_cast_remote_field_values},
+    removeActorsFromProjectRole              => {1 => \&_cast_remote_project_role},
+    removeDefaultActorsFromProjectRole       => {1 => \&_cast_remote_project_role},
     setProjectAvatar                   	     => {1 => 'long'},
     updateIssue                        	     => {0 => \&_cast_issue_key, 1 => \&_cast_remote_field_values},
+    updateProjectRole                        => {0 => \&_cast_remote_project_role},
 );
 
 sub _cast_issue_key {
@@ -1155,6 +1165,14 @@ sub _cast_remote_field_values {
     my ($self, $arg) = @_;
     if (ref $arg && ref $arg eq 'HASH') {
 	return [map {RemoteFieldValue->new($_, $arg->{$_})} keys %$arg];
+    }
+    return $arg;
+}
+
+sub _cast_remote_project_role {
+    my ($self, $arg) = @_;
+    if (ref $arg && ref $arg eq 'RemoteProjectRole' && exists $arg->{id} && ! ref $arg->{id}) {
+	$arg->{id} = SOAP::Data->type(long => $arg->{id});
     }
     return $arg;
 }
