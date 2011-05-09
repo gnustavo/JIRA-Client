@@ -1,6 +1,6 @@
 Name:    JIRA-Client
 What:    A OO interface to JIRA's SOAP API.
-Version: 0.27
+Version: 0.28
 Author:  Gustavo Chaves <gnustavo@cpan.org>
 
 JIRA is a proprietary bug tracking system from Atlassian
@@ -52,7 +52,7 @@ You can also look for information at:
 
 COPYRIGHT AND LICENCE
 
-Copyright (C) 2009 CPqD (http://www.cpqd.com.br/)
+Copyright (C) 2009-2011 CPqD (http://www.cpqd.com.br/)
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.

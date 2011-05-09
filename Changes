@@ -1,5 +1,11 @@
 Revision history for JIRA-Client
 
+0.28	2011-05-09
+
+	JIRA::Client->new passes extra arguments to the underlying
+	SOAP::Lite object. This was suggested by Nicholas J Humfrey
+	<njh AT cpan DOT org>.
+
 0.27	2011-03-05
 
 	Properly casts RemoteProjectRole objects in several
