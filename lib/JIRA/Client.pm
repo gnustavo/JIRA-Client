@@ -50,7 +50,7 @@ JIRA is a proprietary bug tracking system from Atlassian
 This module implements an Object Oriented wrapper around JIRA's SOAP
 API, which is specified in
 L<http://docs.atlassian.com/software/jira/docs/api/rpc-jira-plugin/latest/com/atlassian/jira/rpc/soap/JiraSoapService.html>.
-(This version is known to work with JIRA 4 but it was tested by the author only against JIRA 3.13.4 so far.)
+(This version is known work against JIRA 4.4.)
 
 Moreover, it implements some other methods to make it easier to do
 some common operations.
@@ -345,12 +345,15 @@ objects.
 
 =back
 
-Moreover, it accepts a 'magic' field called B<custom_fields> to make
-it easy to set custom fields. It accepts a hash mapping each custom
-field to its value. The custom field can be specified by its id (in
-the format B<customfield_NNNNN>) or by its name, in which case the
-method will try to convert it to its id. Note that to do that
-conversion the user needs administrator rights.
+It accepts a 'magic' field called B<parent>, which specifies the issue
+key from which the created issue must be a sub-task.
+
+It accepts another 'magic' field called B<custom_fields> to make it
+easy to set custom fields. It accepts a hash mapping each custom field
+to its value. The custom field can be specified by its id (in the
+format B<customfield_NNNNN>) or by its name, in which case the method
+will try to convert it to its id. Note that to do that conversion the
+user needs administrator rights.
 
 A simple custom field value can be specified by a scalar, which will
 be properly placed inside an ARRAY in order to satisfy the
@@ -399,11 +402,18 @@ sub create_issue
         $hash->{customFieldValues} = [map {RemoteCustomFieldValue->new($_, $cfs->{$_})} keys %$cfs];
     }
 
-    if (defined $seclevel) {
-	return $self->createIssueWithSecurityLevel($hash, _convert_security_level($self, $seclevel));
-    }
-    else {
-	return $self->createIssue($hash);
+    if (my $parent = delete $hash->{parent}) {
+	if (defined $seclevel) {
+	    return $self->createIssueWithParentWithSecurityLevel($hash, _convert_security_level($self, $parent, $seclevel));
+	} else {
+	    return $self->createIssueWithParent($hash, $parent);
+	}
+    } else {
+	if (defined $seclevel) {
+	    return $self->createIssueWithSecurityLevel($hash, _convert_security_level($self, $seclevel));
+	} else {
+	    return $self->createIssue($hash);
+	}
     }
 }
 
@@ -1101,47 +1111,114 @@ my %typeof = (
     addBase64EncodedAttachmentsToIssue 	     => \&_cast_base64encodedattachments,
     addComment                         	     => {0 => \&_cast_issue_key, 1 => \&_cast_remote_comment},
     addDefaultActorsToProjectRole            => {1 => \&_cast_remote_project_role},
+    # addPermissionTo
+    # addUserToGroup
+    # addVersion
     addWorklogAndAutoAdjustRemainingEstimate => {0 => \&_cast_issue_key},
     addWorklogAndRetainRemainingEstimate     => {0 => \&_cast_issue_key},
     addWorklogWithNewRemainingEstimate       => {0 => \&_cast_issue_key},
     archiveVersion                     	     => {2 => 'boolean'},
+    # createGroup
+    # createIssue
+    createIssueWithParent                    => {1 => \&_cast_issue_key},
+    createIssueWithParentWithSecurityLevel   => {1 => \&_cast_issue_key, 2 => 'long'},
     createIssueWithSecurityLevel       	     => {1 => 'long'},
+    # createPermissionScheme
+    # createProject
+    # createProjectFromObject
     createProjectRole                        => {0 => \&_cast_remote_project_role},
+    # createUser
+    # deleteGroup
     deleteIssue                 	     => {0 => \&_cast_issue_key},
+    # deletePermissionFrom
+    # deletePermissionScheme
+    # deleteProject
     deleteProjectAvatar                	     => {0 => 'long'},
     deleteProjectRole                  	     => {0 => \&_cast_remote_project_role, 1 => 'boolean'},
+    # deleteUser
+    # deleteWorklogAndAutoAdjustRemainingEstimate
+    # deleteWorklogAndRetainRemainingEstimate
+    # deleteWorklogWithNewRemainingEstimate
+    # editComment
+    # getAllPermissions
     getAssociatedNotificationSchemes         => {0 => \&_cast_remote_project_role},
     getAssociatedPermissionSchemes           => {0 => \&_cast_remote_project_role},
     getAttachmentsFromIssue           	     => {0 => \&_cast_issue_key},
     getAvailableActions           	     => {0 => \&_cast_issue_key},
     getComment                         	     => {0 => 'long'},
     getComments                        	     => {0 => \&_cast_issue_key},
+    # getComponents
+    # getConfiguration
+    # getCustomFields
     getDefaultRoleActors                     => {0 => \&_cast_remote_project_role},
+    # getFavouriteFilters
     getFieldsForAction                 	     => {0 => \&_cast_issue_key},
+    getFieldsForCreate                       => {1 => 'long'},
     getFieldsForEdit                 	     => {0 => \&_cast_issue_key},
+    # getGroup
     getIssue	                 	     => {0 => \&_cast_issue_key},
+    # getIssueById
     getIssueCountForFilter             	     => {0 => \&_cast_filter_name_to_id},
     getIssuesFromFilter                	     => {0 => \&_cast_filter_name_to_id},
     getIssuesFromFilterWithLimit       	     => {0 => \&_cast_filter_name_to_id, 1 => 'int', 2 => 'int'},
     getIssuesFromJqlSearch             	     => {1 => 'int'},
+    # getIssuesFromTextSearch
     getIssuesFromTextSearchWithLimit   	     => {1 => 'int', 2 => 'int'},
     getIssuesFromTextSearchWithProject 	     => {2 => 'int'},
+    # getIssueTypes
+    # getIssueTypesForProject
+    # getNotificationSchemes
+    # getPermissionSchemes
+    # getPriorities
+    # getProjectAvatar
     getProjectAvatars                  	     => {1 => 'boolean'},
     getProjectById                     	     => {0 => 'long'},
+    # getProjectByKey
     getProjectRole                     	     => {0 => 'long'},
     getProjectRoleActors               	     => {0 => \&_cast_remote_project_role},
+    # getProjectRoles
+    # getProjectsNoSchemes
     getProjectWithSchemesById          	     => {0 => 'long'},
     getResolutionDateById              	     => {0 => 'long'},
     getResolutionDateByKey             	     => {0 => \&_cast_issue_key},
+    # getResolutions
+    # getSavedFilters
     getSecurityLevel             	     => {0 => \&_cast_issue_key},
+    # getSecurityLevels
+    # getSecuritySchemes
+    # getServerInfo
+    # getStatuses
+    # getSubTaskIssueTypes
+    # getSubTaskIssueTypesForProject
+    # getUser
+    # getVersions
     getWorklogs		             	     => {0 => \&_cast_issue_key},
     hasPermissionToCreateWorklog       	     => {0 => \&_cast_issue_key},
+    # hasPermissionToDeleteWorklog
+    # hasPermissionToEditComment
+    # hasPermissionToUpdateWorklog
+    # isProjectRoleNameUnique
+    # login ##NOT USED##
+    # logout ##NOT USED##
     progressWorkflowAction             	     => {0 => \&_cast_issue_key, 2 => \&_cast_remote_field_values},
+    # refreshCustomFields
+    # releaseVersion
     removeActorsFromProjectRole              => {1 => \&_cast_remote_project_role},
+    # removeAllRoleActorsByNameAndType
+    # removeAllRoleActorsByProject
     removeDefaultActorsFromProjectRole       => {1 => \&_cast_remote_project_role},
+    # removeUserFromGroup
+    # setNewProjectAvatar
     setProjectAvatar                   	     => {1 => 'long'},
+    # setUserPassword
+    # updateGroup
     updateIssue                        	     => {0 => \&_cast_issue_key, 1 => \&_cast_remote_field_values},
+    # updateProject
     updateProjectRole                        => {0 => \&_cast_remote_project_role},
+    # updateUser
+    # updateWorklogAndAutoAdjustRemainingEstimate
+    # updateWorklogAndRetainRemainingEstimate
+    # updateWorklogWithNewRemainingEstimate
 );
 
 sub _cast_issue_key {
