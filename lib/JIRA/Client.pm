@@ -35,7 +35,8 @@ our $VERSION = '0.29';
     }
   );
 
-  $issue = $jira->getIssue('TST-123');
+  $issue = eval { $jira->getIssue('TST-123') };
+  die "Can't getIssue(): $@" if $@;
 
   $jira->set_filter_iterator('my-filter');
   while (my $issue = $jira->next_issue()) {
@@ -63,6 +64,13 @@ JIRA::Client object interface. You must call them with the same name
 as documented in the specification but you should not pass the
 C<token> argument, because it is supplied transparently by the
 JIRA::Client object.
+
+All methods fail by throwing exceptions (croaking, actually). You may
+want to guard against this by invoking them within an eval block, like
+this:
+
+  my $issue = eval { $jira->getIssue('TST-123') };
+  die "Can't getIssue('TST-123'): $@" if $@;
 
 Some of the API methods require hard-to-build data structures as
 arguments. This module tries to make them easier to call by accepting
