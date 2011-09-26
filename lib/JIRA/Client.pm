@@ -252,19 +252,15 @@ sub _convert_duedate {
     my ($self, $hash) = @_;
     my $duedate = $hash->{duedate};
     if (ref $duedate) {
+	return if ref $duedate eq 'SOAP::Data'; # already cast
 	croak "duedate fields must be set with DateTime references.\n"
 	    unless ref $duedate eq 'DateTime';
-	$hash->{duedate} = $duedate->strftime('%d/%B/%y');
+	$hash->{duedate} = SOAP::Data->type(date => $duedate->strftime('%F'));
     }
     elsif (my ($year, $month, $day) = ($duedate =~ /^(\d{4})-(\d{2})-(\d{2})/)) {
 	$month >= 1 and $month <= 12
-	    or croak "Invalid duedate ($hash->{duedate})";
-	$hash->{duedate} = join(
-	    '/',
-	    $day,
-	    qw/zero Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec/[$month],
-	    substr($year, 2, 2),
-	);
+	    or croak "Invalid duedate ($hash->{duedate}).\n";
+	$hash->{duedate} = SOAP::Data->type(date => $duedate);
     }
     return;
 }
