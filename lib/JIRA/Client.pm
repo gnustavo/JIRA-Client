@@ -344,8 +344,12 @@ I<ids> instead of a list of C<RemoteComponent> objects.
 of version I<names> or I<ids> instead of a list of C<RemoteVersion>
 objects.
 
-=item C<duedate> can be specified in the ISO standard format
-(YYYY-MM-DD...) instead of the required format (d/MMM/yy).
+=item C<duedate> can be specified by a DateTime object or by a string
+in ISO standard format (YYYY-MM-DD...). (Note that up to JIRA 4.3 you
+could pass a string in the format "d/MMM/yy", which was passed as is
+to JIRA, which expected a B<string> SOAP type. However, since JIRA 4.4
+the server expects a B<date> SOAP type, which must be in the ISO
+standard format.)
 
 =back
 
