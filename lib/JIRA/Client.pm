@@ -331,6 +331,11 @@ my %_converters = (
     type            => \&_convert_type,
 );
 
+# Accept both names for fields with duplicate names.
+foreach my $field (keys %JRA12300) {
+    $_converters{$JRA12300{$field}} = $_converters{$field};
+}
+
 =item B<create_issue> HASH_REF [, SECURITYLEVEL]
 
 Creates a new issue given a hash containing the initial values for its
