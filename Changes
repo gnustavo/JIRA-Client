@@ -1,5 +1,13 @@
 Revision history for JIRA-Client
 
+0.31    2011-11-19
+
+	Accept both names for JIRA fields that must be named one way
+	to be set and are named otherwise when read. This is due to
+	https://jira.atlassian.com/browse/JRA-12300 and was reported
+	by Dan Baber via
+	https://rt.cpan.org/Ticket/Display.html?id=72470.
+
 0.30    2011-09-26
 
 	Cast duedate's field to a "date" SOAP::Data type. This is
