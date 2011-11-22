@@ -168,39 +168,36 @@ my %JRA12300_backwards = reverse %JRA12300;
 # These are some helper functions to convert names into ids.
 
 sub _convert_type {
-    my ($self, $hash) = @_;
-    my $type = $hash->{type};
+    my ($self, $type) = @_;
     if ($type =~ /\D/) {
         my $types = $self->get_issue_types();
         croak "There is no issue type called '$type'.\n"
             unless exists $types->{$type};
-        $hash->{type} = $types->{$type}{id};
+        return $types->{$type}{id};
     }
-    return;
+    return $type;
 }
 
 sub _convert_priority {
-    my ($self, $hash) = @_;
-    my $prio = $hash->{priority};
+    my ($self, $prio) = @_;
     if ($prio =~ /\D/) {
         my $prios = $self->get_priorities();
         croak "There is no priority called '$prio'.\n"
             unless exists $prios->{$prio};
-        $hash->{priority} = $prios->{$prio}{id};
+        return $prios->{$prio}{id};
     }
-    return;
+    return $prio;
 }
 
 sub _convert_resolution {
-    my ($self, $hash) = @_;
-    my $resolution = $hash->{resolution};
+    my ($self, $resolution) = @_;
     if ($resolution =~ /\D/) {
         my $resolutions = $self->get_resolutions();
         croak "There is no resolution called '$resolution'.\n"
             unless exists $resolutions->{$resolution};
-        $hash->{resolution} = $resolutions->{$resolution}{id};
+        return $resolutions->{$resolution}{id};
     }
-    return;
+    return $resolution;
 }
 
 sub _convert_security_level {
@@ -209,78 +206,103 @@ sub _convert_security_level {
         my $seclevels = $self->get_security_levels($project);
         croak "There is no security level called '$seclevel'.\n"
             unless exists $seclevels->{$seclevel};
-        $seclevel = $seclevels->{$seclevel}{id};
+        return $seclevels->{$seclevel}{id};
     }
     return $seclevel;
 }
 
+# This routine receives an array with a list of $components specified
+# by RemoteComponent objects, names, and ids. It returns an array of
+# RemoteComponent objects.
+
 sub _convert_components {
-    my ($self, $hash, $key, $project) = @_;
-    my $comps = $hash->{components};
+    my ($self, $components, $project) = @_;
     croak "The 'components' value must be an ARRAY ref.\n"
-       unless ref $comps && ref $comps eq 'ARRAY';
-    my $pcomps;                 # project components
-    foreach my $c (@{$comps}) {
-       next if ref $c;
-       if ($c =~ /\D/) {
-           # It's a component name. Let us convert it into its id.
-	   croak "Cannot convert component names because I don't know for which project.\n"
-	       unless $project;
-           $pcomps = $self->get_components($project) unless defined $pcomps;
-           croak "There is no component called '$c'.\n" unless exists $pcomps->{$c};
-           $c = $pcomps->{$c}{id};
-       }
-       # Now we can convert it into an object.
-       $c = RemoteComponent->new($c);
+       unless ref $components && ref $components eq 'ARRAY';
+    my @converted;
+    my $pcomponents;		# project components
+    foreach my $component (@{$components}) {
+	if (ref $component) {
+	    croak "Invalid object (", ref $component, ") in component's array.\n"
+		unless ref $component eq 'RemoteComponent';
+	    push @converted, $component;
+	} elsif ($component =~ /\D/) {
+	    # It's a component name. Let us convert it into its id.
+	    croak "Cannot convert component names because I don't know for which project.\n"
+		unless $project;
+	    $pcomponents = $self->get_components($project) unless defined $pcomponents;
+	    croak "There is no component called '$component'.\n"
+		unless exists $pcomponents->{$component};
+	    push @converted, RemoteComponent->new($pcomponents->{$component}{id});
+	} else {
+	    push @converted, RemoteComponent->new($component);
+	}
     }
-    return;
+    return \@converted;
 }
+
+# This routine receives an array with a list of $versions specified by
+# RemoteVersion objects, names, and ids. It returns an array of
+# RemoteVersion objects.
 
 sub _convert_versions {
-    my ($self, $hash, $key, $project) = @_;
-    my $versions = $hash->{$key};
+    my ($self, $versions, $project) = @_;
     croak "The '$versions' value must be a ARRAY ref.\n"
        unless ref $versions && ref $versions eq 'ARRAY';
-    my $pversions;
-    foreach my $v (@{$versions}) {
-       next if ref $v;
-       if ($v =~ /\D/) {
-           # It is a version name. Let us convert it into its id.
-	   croak "Cannot convert version names because I don't know for which project.\n"
-	       unless $project;
-           $pversions = $self->get_versions($project) unless defined $pversions;
-           croak "There is no version called '$v'.\n" unless exists $pversions->{$v};
-           $v = $pversions->{$v}{id};
-       }
-       # Now we can convert it into an object.
-       $v = RemoteVersion->new($v);
+    my @converted;
+    my $pversions;		# project versions
+    foreach my $version (@{$versions}) {
+	if (ref $version) {
+	    croak "Invalid object (", ref $version, ") in versions's array.\n"
+		unless ref $version eq 'RemoteVersion';
+	    push @converted, $version;
+	} elsif ($version =~ /\D/) {
+	    # It is a version name. Let us convert it into its id.
+	    croak "Cannot convert version names because I don't know for which project.\n"
+		unless $project;
+	    $pversions = $self->get_versions($project) unless defined $pversions;
+	    croak "There is no version called '$version'.\n"
+		unless exists $pversions->{$version};
+	    push @converted, RemoteVersion->new($pversions->{$version}{id});
+	} else {
+	    push @converted, RemoteVersion->new($version);
+	}
     }
-    return;
+    return \@converted;
 }
+
+# This routine returns a duedate as a SOAP::Data object with type
+# 'date'. It can generate this from a DateTime object or from a string
+# in the format YYYY-MM-DD.
 
 sub _convert_duedate {
-    my ($self, $hash) = @_;
-    my $duedate = $hash->{duedate};
+    my ($self, $duedate) = @_;
     if (ref $duedate) {
-	return if ref $duedate eq 'SOAP::Data'; # already cast
+	return $duedate if ref $duedate eq 'SOAP::Data'; # already cast
 	croak "duedate fields must be set with DateTime references.\n"
 	    unless ref $duedate eq 'DateTime';
-	$hash->{duedate} = SOAP::Data->type(date => $duedate->strftime('%F'));
-    }
-    elsif (my ($year, $month, $day) = ($duedate =~ /^(\d{4})-(\d{2})-(\d{2})/)) {
+	return SOAP::Data->type(date => $duedate->strftime('%F'));
+    } elsif (my ($year, $month, $day) = ($duedate =~ /^(\d{4})-(\d{2})-(\d{2})/)) {
 	$month >= 1 and $month <= 12
-	    or croak "Invalid duedate ($hash->{duedate}).\n";
-	$hash->{duedate} = SOAP::Data->type(date => $duedate);
+	    or croak "Invalid duedate ($duedate).\n";
+	return SOAP::Data->type(date => $duedate);
+    } else {
+	return $duedate;
     }
-    return;
 }
 
+# This routine receives a hash mapping custom field's ids to
+# values. The ids can be specified by their real id or by their id's
+# numeric suffix (as the 1000 in 'customfield_1000'). Scalar values
+# are substituted by references to arrays containing the original
+# value. The routine returns a hash-ref to another hash with converted
+# keys and values.
+
 sub _convert_custom_fields {
-    my ($self, $hash) = @_;
-    my $custom_fields = $hash->{custom_fields};
+    my ($self, $custom_fields) = @_;
     croak "The 'custom_fields' value must be a HASH ref.\n"
         unless ref $custom_fields && ref $custom_fields eq 'HASH';
-    my %id2values;
+    my %converted;
     while (my ($id, $values) = each %$custom_fields) {
 	my $realid = $id;
         unless ($realid =~ /^customfield_\d+$/) {
@@ -292,9 +314,9 @@ sub _convert_custom_fields {
 
 	# Custom field values must be specified as ARRAYs but we allow for some short-cuts.
 	if (! ref $values) {
-	    $id2values{$realid} = [$values];
+	    $converted{$realid} = [$values];
 	} elsif (ref $values eq 'ARRAY') {
-	    $id2values{$realid} = $values;
+	    $converted{$realid} = $values;
 	} elsif (ref $values eq 'HASH') {
 	    # This is a short-cut for a Cascading select field, which
 	    # must be specified like this: http://tinyurl.com/2bmthoa
@@ -305,9 +327,9 @@ sub _convert_custom_fields {
 		$level_values = [$level_values] unless ref $level_values;
 		if ($level eq '0') {
 		    # The first level doesn't have a colon
-		    $id2values{$realid} = $level_values
+		    $converted{$realid} = $level_values
 		} elsif ($level =~ /^\d+$/) {
-		    $id2values{"$realid:$level"} = $level_values;
+		    $converted{"$realid:$level"} = $level_values;
 		} else {
 		    croak "Invalid cascading field values level spec ($level). It must be a natural number.\n";
 		}
@@ -316,8 +338,7 @@ sub _convert_custom_fields {
 	    croak "Custom field '$id' got a '", ref($values), "' reference as a value.\nValues can only be specified as scalars, ARRAYs, or HASHes though.\n";
 	}
     }
-    $hash->{custom_fields} = \%id2values;
-    return;
+    return \%converted;
 }
 
 my %_converters = (
@@ -334,6 +355,54 @@ my %_converters = (
 # Accept both names for fields with duplicate names.
 foreach my $field (keys %JRA12300) {
     $_converters{$JRA12300{$field}} = $_converters{$field};
+}
+
+# This routine applies all the previous conversions to the $params
+# hash. It also converts the hash's key according with the %JRA12300
+# table. It returns a reference another hash with converted keys and
+# values, which is the base for invoking the methods createIssue,
+# UpdateIssue, and progressWorkflowAction.
+
+sub _convert_params {
+    my ($self, $params, $project) = @_;
+
+    my %converted;
+
+    # Convert fields' values
+    while (my ($field, $value) = %$params) {
+	$converted{$field} =
+	    exists $_converters{$field}
+		? $_converters{$field}->($self, $value, $project)
+		    : $value;
+    }
+
+    # Due to a bug in JIRA we have to substitute the names of some fields.
+    foreach my $field (grep {exists $converted{$_}} keys %JRA12300) {
+	$converted{$JRA12300{$field}} = delete $converted{$field};
+    }
+
+    return \%converted;
+}
+
+# This routine gets a hash produced by _convert_params and flatens in
+# place its Component, Version and custom_fields fields. It goes a
+# step forward before invoking the methods UpdateIssue and
+# progressWorkflowAction.
+
+sub _flaten_components_and_versions {
+    my ($params) = @_;
+
+    # Flaten Component and Version fields
+    for my $field (grep {exists $params->{$_}} qw/components versions fixVersions/) {
+	$params->{$field} = [map {$_->{id}} @{$params->{$field}}];
+    }
+
+    # Flaten the customFieldValues field
+    if (my $custom_fields = delete $params->{custom_fields}) {
+        while (my ($id, $values) = each %$custom_fields) {
+            $params->{$id} = $values;
+        }
+    }
 }
 
 =item B<create_issue> HASH_REF [, SECURITYLEVEL]
@@ -400,8 +469,7 @@ You can do it like this:
 
     {customfield_10011 => {'0' => 10031, '1' => 10188}},
 
-Note that the hash's values will be modified to make them comply to
-JIRA's data requirements. However, the hash's keys will be preserved.
+Note that the original hash keys and values are completely preserved.
 
 =cut
 
@@ -417,43 +485,26 @@ sub create_issue
             unless exists $params->{$field};
     }
 
-    # Convert some fields' values
-    foreach my $field (grep {exists $_converters{$_}} keys %$params) {
-	$_converters{$field}->($self, $params, $field, $params->{project});
-    }
+    $params = $self->_convert_params($params, $params->{project});
 
-    # Substitute customFieldValues for custom_fields
+    # Substitute customFieldValues array for custom_fields hash
     if (my $cfs = delete $params->{custom_fields}) {
         $params->{customFieldValues} = [map {RemoteCustomFieldValue->new($_, $cfs->{$_})} keys %$cfs];
     }
 
-    # Due to a bug in JIRA we have to substitute the names of some fields.
-    foreach my $field (grep {exists $params->{$_}} keys %JRA12300) {
-	$params->{$JRA12300{$field}} = delete $params->{$field};
-    }
-
-    my $issue;
-
     if (my $parent = delete $params->{parent}) {
 	if (defined $seclevel) {
-	    $issue = $self->createIssueWithParentWithSecurityLevel($params, $parent, _convert_security_level($self, $seclevel, $params->{project}));
+	    return $self->createIssueWithParentWithSecurityLevel($params, $parent, _convert_security_level($self, $seclevel, $params->{project}));
 	} else {
-	    $issue = $self->createIssueWithParent($params, $parent);
+	    return $self->createIssueWithParent($params, $parent);
 	}
     } else {
 	if (defined $seclevel) {
-	    $issue = $self->createIssueWithSecurityLevel($params, _convert_security_level($self, $seclevel, $params->{project}));
+	    return $self->createIssueWithSecurityLevel($params, _convert_security_level($self, $seclevel, $params->{project}));
 	} else {
-	    $issue = $self->createIssue($params);
+	    return $self->createIssue($params);
 	}
     }
-
-    # Restore substituted field names in hash passed by reference
-    foreach my $field (grep {exists $params->{$_}} keys %JRA12300_backwards) {
-	$params->{$JRA12300_backwards{$field}} = delete $params->{$field};
-    }
-
-    return $issue;
 }
 
 =item B<update_issue> ISSUE_OR_KEY, HASH_REF
@@ -461,8 +512,7 @@ sub create_issue
 Update a issue given a hash containing the values for its fields. The
 first argument may be an issue key or a RemoteIssue object. The second
 argument must be a hash-ref specifying the fields's values just like
-documented in the create_issue function above. In particular, note
-that its values will be modified, but not its keys.
+documented in the create_issue function above.
 
 This is an easier to use version of the updateIssue API method because
 it accepts the same shortcuts that create_issue does.
@@ -490,36 +540,9 @@ sub update_issue
 
     my ($project) = ($key =~ /^([^-]+)/);
 
-    # Convert some fields' values
-    foreach my $field (grep {exists $_converters{$_}} keys %$params) {
-	$_converters{$field}->($self, $params, $field, $project);
-    }
+    $params = $self->_convert_params($params, $project);
 
-    # Convert RemoteComponent objects into component ids
-    if (my $comps = $params->{components}) {
-        $_ = $_->{id} foreach @$comps;
-    }
-
-    # Convert RemoteVersion objects into version ids
-    for my $field (qw/fixVersions affectsVersions/) {
-        if (my $versions = $params->{$field}) {
-            $_ = $_->{id} foreach @$versions;
-        }
-    }
-
-    # Due to a bug in JIRA we have to substitute the names of some fields.
-    foreach my $field (keys %JRA12300) {
-	if (my $value = delete $params->{$field}) {
-	    $params->{$JRA12300{$field}} = $value;
-	}
-    }
-
-    # Expand the custom_fields hash into the custom fields themselves.
-    if (my $custom_fields = delete $params->{custom_fields}) {
-        while (my ($id, $values) = each %$custom_fields) {
-            $params->{$id} = $values;
-        }
-    }
+    _flaten_components_and_versions($params);
 
     return $self->updateIssue($key, $params);
 }
@@ -780,8 +803,7 @@ returned by a previous call to, e.g., C<getIssue>.
 
 =item C<PARAMS> must be a hash mapping field names to field
 values. This hash is treated in the same way as the hash passed to the
-function B<create_issue> above. In particular, note that its values
-will be modified, but not its keys.
+function B<create_issue> above.
 
 =back
 
@@ -810,7 +832,6 @@ sub progress_workflow_action_safely {
 	$key   = $issue;
 	$issue = undef;
     }
-    my ($project) = (split /-/, $key)[0];
     $params = {} unless defined $params;
     ref $params and ref $params eq 'HASH'
         or croak "progress_workflow_action_safely's third arg must be a HASH-ref\n";
@@ -852,36 +873,11 @@ sub progress_workflow_action_safely {
         }
     }
 
-    # Convert some fields' values
-    foreach my $field (grep {exists $_converters{$_}} keys %$params) {
-	$_converters{$field}->($self, $params, $field, $project);
-    }
+    my ($project) = ($key =~ /^([^-]+)/);
 
-    # Convert RemoteComponent objects into component ids
-    if (my $comps = $params->{components}) {
-        $_ = $_->{id} foreach @$comps;
-    }
+    $params = $self->_convert_params($params, $project);
 
-    # Convert RemoteVersion objects into version ids
-    for my $field (qw/fixVersions affectsVersions/) {
-        if (my $versions = $params->{$field}) {
-            $_ = $_->{id} foreach @$versions;
-        }
-    }
-
-    # Due to a bug in JIRA we have to substitute the names of some fields.
-    foreach my $field (keys %JRA12300) {
-	if (my $value = delete $params->{$field}) {
-	    $params->{$JRA12300{$field}} = $value;
-	}
-    }
-
-    # Expand the custom_fields hash into the custom fields themselves.
-    if (my $custom_fields = delete $params->{custom_fields}) {
-        while (my ($id, $values) = each %$custom_fields) {
-            $params->{$id} = $values;
-        }
-    }
+    _flaten_components_and_versions($params);
 
     return $self->progressWorkflowAction($key, $action, $params);
 }
