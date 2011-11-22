@@ -400,50 +400,69 @@ You can do it like this:
 
     {customfield_10011 => {'0' => 10031, '1' => 10188}},
 
+Note that the hash's values will be modified to make them comply to
+JIRA's data requirements. However, the hash's keys will be preserved.
 
 =cut
 
 sub create_issue
 {
-    my ($self, $hash, $seclevel) = @_;
+    my ($self, $params, $seclevel) = @_;
     croak "create_issue requires an argument.\n"
-        unless defined $hash;
+        unless defined $params;
     croak "create_issue's argument must be a HASH ref.\n"
-        unless ref $hash && ref $hash eq 'HASH';
+        unless ref $params && ref $params eq 'HASH';
     for my $field (qw/project summary type/) {
         croak "create_issue's HASH ref must define a '$field'.\n"
-            unless exists $hash->{$field};
+            unless exists $params->{$field};
     }
 
     # Convert some fields' values
-    foreach my $field (grep {exists $_converters{$_}} keys %$hash) {
-	$_converters{$field}->($self, $hash, $field, $hash->{project});
+    foreach my $field (grep {exists $_converters{$_}} keys %$params) {
+	$_converters{$field}->($self, $params, $field, $params->{project});
     }
 
     # Substitute customFieldValues for custom_fields
-    if (my $cfs = delete $hash->{custom_fields}) {
-        $hash->{customFieldValues} = [map {RemoteCustomFieldValue->new($_, $cfs->{$_})} keys %$cfs];
+    if (my $cfs = delete $params->{custom_fields}) {
+        $params->{customFieldValues} = [map {RemoteCustomFieldValue->new($_, $cfs->{$_})} keys %$cfs];
     }
 
-    if (my $parent = delete $hash->{parent}) {
+    # Due to a bug in JIRA we have to substitute the names of some fields.
+    foreach my $field (grep {exists $params->{$_}} keys %JRA12300) {
+	$params->{$JRA12300{$field}} = delete $params->{$field};
+    }
+
+    my $issue;
+
+    if (my $parent = delete $params->{parent}) {
 	if (defined $seclevel) {
-	    return $self->createIssueWithParentWithSecurityLevel($hash, _convert_security_level($self, $parent, $seclevel));
+	    $issue = $self->createIssueWithParentWithSecurityLevel($params, _convert_security_level($self, $parent, $seclevel));
 	} else {
-	    return $self->createIssueWithParent($hash, $parent);
+	    $issue = $self->createIssueWithParent($params, $parent);
 	}
     } else {
 	if (defined $seclevel) {
-	    return $self->createIssueWithSecurityLevel($hash, _convert_security_level($self, $seclevel));
+	    $issue = $self->createIssueWithSecurityLevel($params, _convert_security_level($self, $seclevel));
 	} else {
-	    return $self->createIssue($hash);
+	    $issue = $self->createIssue($params);
 	}
     }
+
+    # Restore substituted field names in hash passed by reference
+    foreach my $field (grep {exists $params->{$_}} keys %JRA12300_backwards) {
+	$params->{$JRA12300_backwards{$field}} = delete $params->{$field};
+    }
+
+    return $issue;
 }
 
 =item B<update_issue> ISSUE_OR_KEY, HASH_REF
 
 Update a issue given a hash containing the values for its fields. The
-first argument may be an issue key or a RemoteIssue object.
+first argument may be an issue key or a RemoteIssue object. The second
+argument must be a hash-ref specifying the fields's values just like
+documented in the create_issue function above. In particular, note
+that its values will be modified, but not its keys.
 
 This is an easier to use version of the updateIssue API method because
 it accepts the same shortcuts that create_issue does.
@@ -760,8 +779,9 @@ returned by a previous call to, e.g., C<getIssue>.
 =item C<ACTION> can be either an action I<id> or an action I<name>.
 
 =item C<PARAMS> must be a hash mapping field names to field
-values. This hash accepts the same shortcuts as the argument to
-B<create_issue>.
+values. This hash is treated in the same way as the hash passed to the
+function B<create_issue> above. In particular, note that its values
+will be modified, but not its keys.
 
 =back
 
