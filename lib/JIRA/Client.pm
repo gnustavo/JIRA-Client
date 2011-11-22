@@ -780,11 +780,15 @@ And risking to forget to pass some field you can do this:
 =cut
 
 sub progress_workflow_action_safely {
-    my ($self, $key, $action, $params) = @_;
-    my $issue;
-    if (ref $key) {
-        $issue = $key;
+    my ($self, $issue, $action, $params) = @_;
+    my $key;
+    if (ref $issue) {
+	croak "progress_workflow_action_safely's first argument must be a RemoteIssue reference.\n"
+	    unless ref $key eq 'RemoteIssue';
         $key   = $issue->{key};
+    } else {
+	$key   = $issue;
+	$issue = undef;
     }
     my ($project) = (split /-/, $key)[0];
     $params = {} unless defined $params;
