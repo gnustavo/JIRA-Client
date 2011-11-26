@@ -7,17 +7,33 @@ use Getopt::Long  qw(GetOptions);
 # clean up the online testing flag file.
 unlink("t/online.enabled");
 
-my $usage = "$0 [--author-tests] [--online-tests=JIRAURL,USER,PASS,PRJKEY,ISSUETYPE,PRIORITY,COMPONENT,VERSION,CUSTOMFIELDNAME,CUSTOMFIELDVALUE,FILTER,ACTION]\n";
+my $usage = "$0 [--author-tests] [--demo-tests=USER,PASS] [--online-tests=JIRAURL,USER,PASS,PRJKEY,ISSUETYPE,PRIORITY,COMPONENT,VERSION,CUSTOMFIELDNAME,CUSTOMFIELDVALUE,FILTER,ACTION]\n";
 my $author_tests = 0;
+my $demo_tests;
 my $online_tests;
 GetOptions(
     'author-tests'   => \$author_tests,
+    'demo-tests=s'   => \$demo_tests,
     'online-tests=s' => \$online_tests,
 ) or die $usage;
 
 if ($author_tests) {
     open(ENABLED, '>t/author.enabled') or die "Can't touch ./t/author.enabled: $!";
     close(ENABLED)                     or die "Can't touch ./t/author.enabled: $!";
+}
+
+if ($demo_tests) {
+    # These are the author's personal test configuration. :-)
+    my ($user, $pass) = split /,/, $demo_tests;
+    open(ENABLED, ">t/demo.enabled") or die "Can't touch ./t/demo.enabled: $!";
+    print ENABLED <<"EOS";
+{
+    url       => 'https://sandbox.onjira.com/',
+    user      => '$user',
+    pass      => '$pass',
+};
+EOS
+    close(ENABLED) or die "Can't touch ./t/demo.enabled: $!";
 }
 
 if ($online_tests) {
