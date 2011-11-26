@@ -204,9 +204,9 @@ sub _convert_resolution {
 }
 
 sub _convert_security_level {
-    my ($self, $seclevel) = @_;
+    my ($self, $seclevel, $project) = @_;
     if ($seclevel =~ /\D/) {
-        my $seclevels = $self->get_security_levels();
+        my $seclevels = $self->get_security_levels($project);
         croak "There is no security level called '$seclevel'.\n"
             unless exists $seclevels->{$seclevel};
         $seclevel = $seclevels->{$seclevel}{id};
@@ -436,13 +436,13 @@ sub create_issue
 
     if (my $parent = delete $params->{parent}) {
 	if (defined $seclevel) {
-	    $issue = $self->createIssueWithParentWithSecurityLevel($params, _convert_security_level($self, $parent, $seclevel));
+	    $issue = $self->createIssueWithParentWithSecurityLevel($params, $parent, _convert_security_level($self, $seclevel, $params->{project}));
 	} else {
 	    $issue = $self->createIssueWithParent($params, $parent);
 	}
     } else {
 	if (defined $seclevel) {
-	    $issue = $self->createIssueWithSecurityLevel($params, _convert_security_level($self, $seclevel));
+	    $issue = $self->createIssueWithSecurityLevel($params, _convert_security_level($self, $seclevel, $params->{project}));
 	} else {
 	    $issue = $self->createIssue($params);
 	}
@@ -576,17 +576,17 @@ sub get_resolutions {
     return $self->{cache}{resolutions};
 }
 
-=item B<get_security_levels>
+=item B<get_security_levels> PROJECT-KEY
 
-Returns a hash mapping a server's security level names to the
+Returns a hash mapping a project's security level names to the
 RemoteSecurityLevel objects describing them.
 
 =cut
 
 sub get_security_levels {
-    my ($self) = @_;
-    $self->{cache}{seclevels} ||= {map {$_->{name} => $_} @{$self->getSecurityLevels()}};
-    return $self->{cache}{seclevels};
+    my ($self, $project_key) = @_;
+    $self->{cache}{seclevels}{$project_key} ||= {map {$_->{name} => $_} @{$self->getSecurityLevels($project_key)}};
+    return $self->{cache}{seclevels}{$project_key};
 }
 
 =item B<get_custom_fields>
