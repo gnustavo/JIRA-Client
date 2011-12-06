@@ -388,7 +388,7 @@ sub _flaten_components_and_versions {
     my ($params) = @_;
 
     # Flaten Component and Version fields
-    for my $field (grep {exists $params->{$_}} qw/components versions fixVersions/) {
+    for my $field (grep {exists $params->{$_}} qw/components affectsVersions fixVersions/) {
 	$params->{$field} = [map {$_->{id}} @{$params->{$field}}];
     }
 
