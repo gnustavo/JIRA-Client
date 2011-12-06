@@ -5,8 +5,8 @@ use lib '/home/gustavo/git/jira-client/lib';
 use JIRA::Client;
 
 my $conf;
-if (-f 't/demo.enabled') {
-    $conf = do 't/demo.enabled';
+if (-f 't/author.enabled') {
+    $conf = do 't/author.enabled';
     plan tests => 17;
 }
 else {

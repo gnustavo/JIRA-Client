@@ -247,7 +247,7 @@ sub _convert_components {
 
 sub _convert_versions {
     my ($self, $versions, $project) = @_;
-    croak "The '$versions' value must be a ARRAY ref.\n"
+    croak "The '$versions' value must be an ARRAY ref.\n"
        unless ref $versions && ref $versions eq 'ARRAY';
     my @converted;
     my $pversions;		# project versions
@@ -358,8 +358,7 @@ foreach my $field (keys %JRA12300) {
 }
 
 # This routine applies all the previous conversions to the $params
-# hash. It also converts the hash's key according with the %JRA12300
-# table. It returns a reference another hash with converted keys and
+# hash. It returns a reference another hash with converted keys and
 # values, which is the base for invoking the methods createIssue,
 # UpdateIssue, and progressWorkflowAction.
 
@@ -369,24 +368,20 @@ sub _convert_params {
     my %converted;
 
     # Convert fields' values
-    while (my ($field, $value) = %$params) {
+    while (my ($field, $value) = each %$params) {
 	$converted{$field} =
 	    exists $_converters{$field}
 		? $_converters{$field}->($self, $value, $project)
 		    : $value;
     }
 
-    # Due to a bug in JIRA we have to substitute the names of some fields.
-    foreach my $field (grep {exists $converted{$_}} keys %JRA12300) {
-	$converted{$JRA12300{$field}} = delete $converted{$field};
-    }
-
     return \%converted;
 }
 
 # This routine gets a hash produced by _convert_params and flatens in
-# place its Component, Version and custom_fields fields. It goes a
-# step forward before invoking the methods UpdateIssue and
+# place its Component, Version, and custom_fields fields. It also
+# converts the hash's key according with the %JRA12300 table. It goes
+# a step further before invoking the methods UpdateIssue and
 # progressWorkflowAction.
 
 sub _flaten_components_and_versions {
@@ -402,6 +397,11 @@ sub _flaten_components_and_versions {
         while (my ($id, $values) = each %$custom_fields) {
             $params->{$id} = $values;
         }
+    }
+
+    # Due to a bug in JIRA we have to substitute the names of some fields.
+    foreach my $field (grep {exists $params->{$_}} keys %JRA12300) {
+	$params->{$JRA12300{$field}} = delete $params->{$field};
     }
 }
 
@@ -826,7 +826,7 @@ sub progress_workflow_action_safely {
     my $key;
     if (ref $issue) {
 	croak "progress_workflow_action_safely's first argument must be a RemoteIssue reference.\n"
-	    unless ref $key eq 'RemoteIssue';
+	    unless ref $issue eq 'RemoteIssue';
         $key   = $issue->{key};
     } else {
 	$key   = $issue;
@@ -861,16 +861,8 @@ sub progress_workflow_action_safely {
         if (exists $issue->{$id}) {
             $params->{$id} = $issue->{$id} if defined $issue->{$id};
         }
-        else {
-            foreach my $cf (@{$issue->{customFieldValues}}) {
-                if ($cf->{customfieldId} eq $id) {
-                    $params->{$id} = $cf->{values};
-                    last;
-                }
-            }
-            # NOTE: It's not a problem if we can't find a missing
-            # parameter in the issue. It will simply stay undefined.
-        }
+	# NOTE: It's not a problem if we can't find a missing
+	# parameter in the issue. It will simply stay undefined.
     }
 
     my ($project) = ($key =~ /^([^-]+)/);

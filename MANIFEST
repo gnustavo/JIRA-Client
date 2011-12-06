@@ -3,11 +3,9 @@ examples/jiraclient.pl
 lib/JIRA/Client.pm
 Makefile.PL
 MANIFEST
-MANIFEST.SKIP
 META.yml
 README
 t/00-load.t
-t/01-online.t
 t/02-demo.t
 t/kwalitee.t
 t/perlcritic.t
