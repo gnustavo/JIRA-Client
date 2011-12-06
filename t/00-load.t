@@ -1,3 +1,4 @@
+# Hey Emacs, this is -*- perl -*-
 use Test::More tests => 1;
 
 BEGIN {
