@@ -1,4 +1,9 @@
-Revision history for JIRA-Client
+Revision history for JIRA-Client.
+
+0.32    2011-12-05
+
+	[rt72470] Fix create_issue and progress_workflow_action_safely parameter conversions.
+	[rt72667] Pass project key to get_security_levels.
 
 0.31    2011-11-19
 
