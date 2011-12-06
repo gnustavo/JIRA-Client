@@ -5,61 +5,24 @@ use IO::Socket ();
 use Getopt::Long  qw(GetOptions);
 
 # clean up the online testing flag file.
-unlink("t/online.enabled");
+unlink("t/author.enabled");
 
-my $usage = "$0 [--author-tests] [--demo-tests=USER,PASS] [--online-tests=JIRAURL,USER,PASS,PRJKEY,ISSUETYPE,PRIORITY,COMPONENT,VERSION,CUSTOMFIELDNAME,CUSTOMFIELDVALUE,FILTER,ACTION]\n";
-my $author_tests = 0;
-my $demo_tests;
-my $online_tests;
+my $usage = "$0 [--author-tests=PASSWORD]\n";
+my $author_tests;
 GetOptions(
-    'author-tests'   => \$author_tests,
-    'demo-tests=s'   => \$demo_tests,
-    'online-tests=s' => \$online_tests,
+    'author-tests=s' => \$author_tests,
 ) or die $usage;
 
 if ($author_tests) {
-    open(ENABLED, '>t/author.enabled') or die "Can't touch ./t/author.enabled: $!";
-    close(ENABLED)                     or die "Can't touch ./t/author.enabled: $!";
-}
-
-if ($demo_tests) {
-    # These are the author's personal test configuration. :-)
-    my ($user, $pass) = split /,/, $demo_tests;
-    open(ENABLED, ">t/demo.enabled") or die "Can't touch ./t/demo.enabled: $!";
-    print ENABLED <<"EOS";
+    # This relies on the author's personal test configuration. :-)
+    open my $enabled, '>', 't/author.enabled' or die "Can't touch ./t/author.enabled: $!";
+    print $enabled <<"EOS";
 {
-    url       => 'https://sandbox.onjira.com/',
-    user      => '$user',
-    pass      => '$pass',
+    url  => 'https://gnustavo.atlassian.net/',
+    user => 'gnustavo',
+    pass => '$author_tests',
 };
 EOS
-    close(ENABLED) or die "Can't touch ./t/demo.enabled: $!";
-}
-
-if ($online_tests) {
-    # These are the author's personal test configuration. :-)
-    $online_tests = 'http://localhost:8080/,gustavo,senhaforte,TST,Bug,Major,comp1,1.1,cor,azul,filtro,Close Issue'
-	if $online_tests eq 'default';
-    my ($url, $user, $pass, $prjkey, $type, $prio, $component, $version, $cfname, $cfvalue, $filter, $action) = split /,/, $online_tests;
-    defined $prjkey or die $usage;
-    open(ENABLED, ">t/online.enabled") or die "Can't touch ./t/online.enabled: $!";
-    print ENABLED <<"EOS";
-{
-    url       => '$url',
-    user      => '$user',
-    pass      => '$pass',
-    prjkey    => '$prjkey',
-    type      => '$type',
-    priority  => '$prio',
-    component => '$component',
-    version   => '$version',
-    cfname    => '$cfname',
-    cfvalue   => '$cfvalue',
-    filter    => '$filter',
-    action    => '$action',
-};
-EOS
-    close(ENABLED) or die "Can't touch ./t/online.enabled: $!";
 }
 
 WriteMakefile(
@@ -74,5 +37,5 @@ WriteMakefile(
 	'SOAP::Lite' => 0,
     },
     dist                => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
-    clean               => { FILES => 'JIRA-Client-* t/author.enabled t/online.enabled' },
+    clean               => { FILES => 'JIRA-Client-* t/*.enabled' },
 );
