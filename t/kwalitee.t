@@ -5,10 +5,10 @@ unless (-e 't/author.enabled') {
     exit 0;
 }
 
-require Test::Kwalitee;
+eval { require Test::Kwalitee; };
 
-if ($@) {
-   plan skip_all => 'Test::Kwalitee not installed; skipping';
+if ( $EVAL_ERROR ) {
+    plan( skip_all => 'Test::Kwalitee required to evaluate code' );
    exit 0;
 }
 
