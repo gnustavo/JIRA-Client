@@ -171,9 +171,12 @@ sub _convert_type {
     my ($self, $type) = @_;
     if ($type =~ /\D/) {
         my $types = $self->get_issue_types();
-        croak "There is no issue type called '$type'.\n"
-            unless exists $types->{$type};
-        return $types->{$type}{id};
+        return $types->{$type}{id} if exists $types->{$type};
+
+	$types = $self->get_subtask_issue_types();
+        return $types->{$type}{id} if exists $types->{$type};
+
+        croak "There is no issue type called '$type'.\n";
     }
     return $type;
 }
@@ -558,6 +561,19 @@ sub get_issue_types {
     my ($self) = @_;
     $self->{cache}{issue_types} ||= {map {$_->{name} => $_} @{$self->getIssueTypes()}};
     return $self->{cache}{issue_types};
+}
+
+=item B<get_subtask_issue_types>
+
+Returns a hash mapping the server's sub-task issue type names to the
+RemoteIssueType objects describing them.
+
+=cut
+
+sub get_subtask_issue_types {
+    my ($self) = @_;
+    $self->{cache}{subtask_issue_types} ||= {map {$_->{name} => $_} @{$self->getSubTaskIssueTypes()}};
+    return $self->{cache}{subtask_issue_types};
 }
 
 =item B<get_statuses>

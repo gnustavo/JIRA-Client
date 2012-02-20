@@ -72,3 +72,15 @@ ok(defined $issue, 'getIssue returns')
 #    and ok(ref $pissue, 'progress_workflow_action_safely returns an object')
 #    and is(ref $pissue, 'RemoteIssue', 'progress_workflow_action_safely returns a RemoteIssue object again');
 
+my $subissue = eval {$jira->create_issue({
+    project => 'TST',
+    type    => 'Sub-task',
+    parent  => $issue->{key},
+    summary => 'JIRA::Client test Sub-task',
+})};
+
+ok(defined $issue, 'create_issue sub-task returns')
+    and ok(ref $issue, 'create_issue sub-task returns an object')
+    and is(ref $issue, 'RemoteIssue', "create_issue sub-task returns a RemoteIssue object (http://sandbox.onjira.com/browse/$issue->{key})")
+    or BAIL_OUT("Cannot proceed because I cannot create an issue: $@\n");
+
