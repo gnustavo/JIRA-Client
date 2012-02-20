@@ -18,7 +18,7 @@ if ($author_tests) {
     open my $enabled, '>', 't/author.enabled' or die "Can't touch ./t/author.enabled: $!";
     print $enabled <<"EOS";
 {
-    url  => 'https://gnustavo.atlassian.net/',
+    url  => 'https://jira.atlassian.com/',
     user => 'gnustavo',
     pass => '$author_tests',
 };
