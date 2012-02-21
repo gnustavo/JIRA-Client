@@ -14,19 +14,12 @@ INSTALLATION
 
 To install this module, run the following commands:
 
-	perl Makefile.PL [--online-tests=JIRA_URL,USER,PASS,PRJKEY]
+	perl Makefile.PL
 	make
 	make test
 	make install
 
-The optional argument --online-tests enable some tests during 'make
-test' that require an actual connection to a JIRA instance. The
-argument consists of four pieces of information separated by
-comas. JIRA_URL is the base URL of the instance (e.g.,
-http://localhost:8080/). USER and PASS are the credentials of a user
-that can log in to the JIRA instance. PRJKEY is the key of a project
-in the JIRA instance in which USER has permission to create an issue
-in.
+(Study the t/02-demo-user.t test script to see how to perform online tests.)
 
 SUPPORT AND DOCUMENTATION
 
