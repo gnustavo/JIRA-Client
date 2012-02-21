@@ -1,4 +1,7 @@
+use strict;
+use warnings;
 use Test::More;
+use English qw(-no_match_vars);
 
 unless (-e 't/author.enabled') {
     plan skip_all => "Author-only tests";
