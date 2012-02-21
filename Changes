@@ -1,5 +1,11 @@
 Revision history for JIRA-Client.
 
+0.33    2012-02-20
+
+	Make create_issue correctly support sub-task issue types. This
+	was suggested by Stephen Marquard via
+	https://rt.cpan.org/Ticket/Display.html?id=75157.
+
 0.32    2011-12-05
 
 	[rt72470] Fix create_issue and progress_workflow_action_safely parameter conversions.

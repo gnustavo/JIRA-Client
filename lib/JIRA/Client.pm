@@ -11,11 +11,11 @@ JIRA::Client - An extended interface to JIRA's SOAP API.
 
 =head1 VERSION
 
-Version 0.32
+Version 0.33
 
 =cut
 
-our $VERSION = '0.32';
+our $VERSION = '0.33';
 
 =head1 SYNOPSIS
 
@@ -1425,7 +1425,7 @@ L<http://search.cpan.org/dist/JIRA-Client>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2009-2011 CPqD, all rights reserved.
+Copyright 2009-2012 CPqD, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself.
