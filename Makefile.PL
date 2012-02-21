@@ -1,29 +1,6 @@
 use strict;
 use warnings;
-use ExtUtils::MakeMaker qw(WriteMakefile prompt);
-use IO::Socket ();
-use Getopt::Long  qw(GetOptions);
-
-# clean up the online testing flag file.
-unlink("t/author.enabled");
-
-my $usage = "$0 [--author-tests=PASSWORD]\n";
-my $author_tests;
-GetOptions(
-    'author-tests=s' => \$author_tests,
-) or die $usage;
-
-if ($author_tests) {
-    # This relies on the author's personal test configuration. :-)
-    open my $enabled, '>', 't/author.enabled' or die "Can't touch ./t/author.enabled: $!";
-    print $enabled <<"EOS";
-{
-    url  => 'https://jira.atlassian.com/',
-    user => 'gnustavo',
-    pass => '$author_tests',
-};
-EOS
-}
+use ExtUtils::MakeMaker qw(WriteMakefile);
 
 WriteMakefile(
     NAME                => 'JIRA::Client',
