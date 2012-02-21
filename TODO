@@ -1,3 +1,10 @@
+- Parameterize author tests with a file so that any user can drive the
+  demo test using their own JIRA instance.
+
+- Substitute Dzil for EU::MM.
+
+- Move author tests to a xt directory.
+
 - Implement some non-API methods from
   http://code.google.com/p/jira4r/source/browse/trunk/lib/jira4r/jira_tool.rb.
 
