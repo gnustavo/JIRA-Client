@@ -1,12 +1,17 @@
 Changes
+examples/jira-dump.pl
 examples/jiraclient.pl
 lib/JIRA/Client.pm
 Makefile.PL
 MANIFEST
 META.yml
+MYMETA.json
+MYMETA.yml
 README
 t/00-load.t
+t/02-demo-user.t
 t/02-demo.t
+t/demo-atlassian.conf
 t/kwalitee.t
 t/perlcritic.t
 t/pod-coverage.t

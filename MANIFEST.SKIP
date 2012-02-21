@@ -58,3 +58,4 @@ MANIFEST\.SKIP$
 \.tar\.gz$
 \.perlcriticrc$
 \.enabled$
+demo-cpqd.conf$
