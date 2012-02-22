@@ -1,21 +1,14 @@
-package JIRA::Client;
-
 use strict;
 use warnings;
+
+package JIRA::Client;
+
 use Carp;
 use SOAP::Lite;
 
 =head1 NAME
 
 JIRA::Client - An extended interface to JIRA's SOAP API.
-
-=head1 VERSION
-
-Version 0.33
-
-=cut
-
-our $VERSION = '0.33';
 
 =head1 SYNOPSIS
 
