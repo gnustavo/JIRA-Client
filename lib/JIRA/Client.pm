@@ -2,13 +2,10 @@ use strict;
 use warnings;
 
 package JIRA::Client;
+# ABSTRACT: An extended interface to JIRA's SOAP API.
 
 use Carp;
 use SOAP::Lite;
-
-=head1 NAME
-
-JIRA::Client - An extended interface to JIRA's SOAP API.
 
 =head1 SYNOPSIS
 
@@ -97,9 +94,7 @@ follow the CamelCase convention used by the native API methods but the
 more Perlish underscore_separated_words convention so that you can
 distinguish them and we can avoid future name clashes.
 
-=over 4
-
-=item B<new> JIRAURL, USER, PASSWD [, <SOAP::Lite arguments>]
+=method B<new> JIRAURL, USER, PASSWD [, <SOAP::Lite arguments>]
 
 The JIRA::Client constructor requires three arguments. JIRAURL is
 JIRA's base URL from which will be constructed it's WSDL descriptor as
@@ -401,7 +396,7 @@ sub _flaten_components_and_versions {
     }
 }
 
-=item B<create_issue> HASH_REF [, SECURITYLEVEL]
+=method B<create_issue> HASH_REF [, SECURITYLEVEL]
 
 Creates a new issue given a hash containing the initial values for its
 fields and, optionally, a security-level. The hash must specify at
@@ -503,7 +498,7 @@ sub create_issue
     }
 }
 
-=item B<update_issue> ISSUE_OR_KEY, HASH_REF
+=method B<update_issue> ISSUE_OR_KEY, HASH_REF
 
 Update a issue given a hash containing the values for its fields. The
 first argument may be an issue key or a RemoteIssue object. The second
@@ -543,7 +538,7 @@ sub update_issue
     return $self->updateIssue($key, $params);
 }
 
-=item B<get_issue_types>
+=method B<get_issue_types>
 
 Returns a hash mapping the server's issue type names to the
 RemoteIssueType objects describing them.
@@ -556,7 +551,7 @@ sub get_issue_types {
     return $self->{cache}{issue_types};
 }
 
-=item B<get_subtask_issue_types>
+=method B<get_subtask_issue_types>
 
 Returns a hash mapping the server's sub-task issue type names to the
 RemoteIssueType objects describing them.
@@ -569,7 +564,7 @@ sub get_subtask_issue_types {
     return $self->{cache}{subtask_issue_types};
 }
 
-=item B<get_statuses>
+=method B<get_statuses>
 
 Returns a hash mapping the server's status names to the
 RemoteStatus objects describing them.
@@ -582,7 +577,7 @@ sub get_statuses {
     return $self->{cache}{statuses};
 }
 
-=item B<get_priorities>
+=method B<get_priorities>
 
 Returns a hash mapping a server's priorities names to the
 RemotePriority objects describing them.
@@ -595,7 +590,7 @@ sub get_priorities {
     return $self->{cache}{priorities};
 }
 
-=item B<get_resolutions>
+=method B<get_resolutions>
 
 Returns a hash mapping a server's resolution names to the
 RemoteResolution objects describing them.
@@ -608,7 +603,7 @@ sub get_resolutions {
     return $self->{cache}{resolutions};
 }
 
-=item B<get_security_levels> PROJECT-KEY
+=method B<get_security_levels> PROJECT-KEY
 
 Returns a hash mapping a project's security level names to the
 RemoteSecurityLevel objects describing them.
@@ -621,7 +616,7 @@ sub get_security_levels {
     return $self->{cache}{seclevels}{$project_key};
 }
 
-=item B<get_custom_fields>
+=method B<get_custom_fields>
 
 Returns a hash mapping JIRA's custom field names to the RemoteField
 representing them. It's useful since when you get a RemoteIssue object
@@ -640,7 +635,7 @@ sub get_custom_fields {
     return $self->{cache}{custom_fields};
 }
 
-=item B<set_custom_fields> HASHREF
+=method B<set_custom_fields> HASHREF
 
 Passes a hash mapping JIRA's custom field names to the RemoteField
 representing them to populate the custom field's cache. This can be
@@ -656,7 +651,7 @@ sub set_custom_fields {
     return;
 }
 
-=item B<get_components> PROJECT_KEY
+=method B<get_components> PROJECT_KEY
 
 Returns a hash mapping a project's components names to the
 RemoteComponent objects describing them.
@@ -669,7 +664,7 @@ sub get_components {
     return $self->{cache}{components}{$project_key};
 }
 
-=item B<get_versions> PROJECT_KEY
+=method B<get_versions> PROJECT_KEY
 
 Returns a hash mapping a project's versions names to the RemoteVersion
 objects describing them.
@@ -682,7 +677,7 @@ sub get_versions {
     return $self->{cache}{versions}{$project_key};
 }
 
-=item B<get_favourite_filters>
+=method B<get_favourite_filters>
 
 Returns a hash mapping the user's favourite filter names to its filter
 ids.
@@ -695,7 +690,7 @@ sub get_favourite_filters {
     return $self->{cache}{filters};
 }
 
-=item B<set_filter_iterator> FILTER [, CACHE_SIZE]
+=method B<set_filter_iterator> FILTER [, CACHE_SIZE]
 
 Sets up an iterator for the filter identified by FILTER. It must
 be called before calls to B<next_issue>.
@@ -738,7 +733,7 @@ sub set_filter_iterator {
     return;
 }
 
-=item B<next_issue>
+=method B<next_issue>
 
 This must be called after a call to B<set_filter_iterator>. Each call
 returns a reference to the next issue from the filter. When there are
@@ -780,7 +775,7 @@ sub next_issue {
     return shift @{$iter->{issues}};
 }
 
-=item B<progress_workflow_action_safely> ISSUE, ACTION, PARAMS
+=method B<progress_workflow_action_safely> ISSUE, ACTION, PARAMS
 
 This is a safe and easier to use version of the
 B<progressWorkflowAction> API method which is used to progress an
@@ -883,7 +878,7 @@ sub progress_workflow_action_safely {
     return $self->progressWorkflowAction($key, $action, $params);
 }
 
-=item B<get_issue_custom_field_values> ISSUE, NAME_OR_IDs
+=method B<get_issue_custom_field_values> ISSUE, NAME_OR_IDs
 
 This method receives a RemoteField object and a list of names or ids
 of custom fields. It returns a list of references to the ARRAYs
@@ -917,7 +912,7 @@ sub get_issue_custom_field_values {
     return wantarray ? @values : \@values;
 }
 
-=item B<attach_files_to_issue> ISSUE, FILES...
+=method B<attach_files_to_issue> ISSUE, FILES...
 
 This method attaches one or more files to an issue. The ISSUE argument
 may be an issue key or a B<RemoteIssue> object. The attachments may be
@@ -1016,7 +1011,7 @@ sub attach_files_to_issue {
     return $self->addBase64EncodedAttachmentsToIssue($issue, \@filenames, \@attachments);
 }
 
-=item B<attach_strings_to_issue> ISSUE, HASHREF
+=method B<attach_strings_to_issue> ISSUE, HASHREF
 
 This method attaches one or more strings to an issue. The ISSUE
 argument may be an issue key or a B<RemoteIssue> object. The
@@ -1043,17 +1038,13 @@ sub attach_strings_to_issue {
     return $self->addBase64EncodedAttachmentsToIssue($issue, \@filenames, \@attachments);
 }
 
-=back
-
 =head1 OTHER CONSTRUCTORS
 
 The JIRA SOAP API uses several types of objects (i.e., classes) for
 which the Perl SOAP interface does not provide the necessary
 constructors. This module implements some of them.
 
-=over 4
-
-=item B<RemoteFieldValue-E<gt>new> ID, VALUES
+=method B<RemoteFieldValue-E<gt>new> ID, VALUES
 
 The RemoteFieldValue object represents the value of a field of an
 issue. It needs two arguments:
@@ -1084,7 +1075,7 @@ sub new {
     return bless({id => $id, values => $values}, $class);
 }
 
-=item B<RemoteCustomFieldValue-E<gt>new> ID, VALUES
+=method B<RemoteCustomFieldValue-E<gt>new> ID, VALUES
 
 The RemoteCustomFieldValue object represents the value of a
 custom_field of an issue. It needs two arguments:
@@ -1112,7 +1103,7 @@ sub new {
     return bless({customfieldId => $id, key => undef, values => $values} => $class);
 }
 
-=item B<RemoteComponent-E<gt>new> ID, NAME
+=method B<RemoteComponent-E<gt>new> ID, NAME
 
 =cut
 
@@ -1125,7 +1116,7 @@ sub new {
     return $o;
 }
 
-=item B<RemoteVersion-E<gt>new> ID, NAME
+=method B<RemoteVersion-E<gt>new> ID, NAME
 
 =cut
 
@@ -1137,10 +1128,6 @@ sub new {
     $o->{name} = $name if $name;
     return $o;
 }
-
-=back
-
-=cut
 
 package JIRA::Client;
 
@@ -1375,53 +1362,6 @@ sub AUTOLOAD {
 
 Please, see the examples under the C<examples> directory in the module
 distribution.
-
-=head1 AUTHOR
-
-Gustavo Chaves, C<< <gnustavo@cpan.org> >>
-
-=head1 BUGS
-
-Please report any bugs or feature requests to C<bug-jira-client at
-rt.cpan.org>, or through the web interface at
-L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=JIRA-Client>.  I will
-be notified, and then you'll automatically be notified of progress on
-your bug as I make changes.
-
-=head1 SUPPORT
-
-You can find documentation for this module with the perldoc command.
-
-    perldoc JIRA::Client
-
-You can also look for information at:
-
-=over 4
-
-=item * RT: CPAN's request tracker
-
-L<http://rt.cpan.org/NoAuth/Bugs.html?Dist=JIRA-Client>
-
-=item * AnnoCPAN: Annotated CPAN documentation
-
-L<http://annocpan.org/dist/JIRA-Client>
-
-=item * CPAN Ratings
-
-L<http://cpanratings.perl.org/d/JIRA-Client>
-
-=item * Search CPAN
-
-L<http://search.cpan.org/dist/JIRA-Client>
-
-=back
-
-=head1 COPYRIGHT & LICENSE
-
-Copyright 2009-2012 CPqD, all rights reserved.
-
-This program is free software; you can redistribute it and/or modify
-it under the same terms as Perl itself.
 
 =cut
 
