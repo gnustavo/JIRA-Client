@@ -1,5 +1,7 @@
 Revision history for JIRA-Client.
 
+{{$NEXT}}
+
 0.33    2012-02-20
 
 	Make create_issue correctly support sub-task issue types. This
