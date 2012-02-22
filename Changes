@@ -2,6 +2,11 @@ Revision history for JIRA-Client.
 
 {{$NEXT}}
 
+0.34    2012-02-22
+
+	Distribution converted to use Dist::Zilla.
+	Online tests are now driven by a configuration file.
+
 0.33    2012-02-20
 
 	Make create_issue correctly support sub-task issue types. This
