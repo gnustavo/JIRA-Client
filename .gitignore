@@ -1,10 +1,5 @@
-/Makefile
-/blib/
-/pm_to_blib
-/Debian_CPANTS.txt
 /t/demo-cpqd.conf
-/MYMETA.json
-/MYMETA.yml
+/JIRA-Client-*
 *.bak
 *.old
 *.tar.gz
