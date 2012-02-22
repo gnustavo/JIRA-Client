@@ -46,7 +46,7 @@ L<http://docs.atlassian.com/software/jira/docs/api/rpc-jira-plugin/latest/com/at
 Moreover, it implements some other methods to make it easier to do
 some common operations.
 
-=head1 API METHODS
+=head2 API METHODS
 
 With the exception of the API C<login> and C<logout> methods, which
 aren't needed, all other methods are available through the
@@ -86,7 +86,7 @@ specified second.
 
 =back
 
-=head1 EXTRA METHODS
+=head2 EXTRA METHODS
 
 This module implements some extra methods to add useful functionality
 to the API. They are described below. Note that their names don't
