@@ -1,5 +1,6 @@
 /t/demo-cpqd.conf
 /JIRA-Client-*
+/.build
 *.bak
 *.old
 *.tar.gz
