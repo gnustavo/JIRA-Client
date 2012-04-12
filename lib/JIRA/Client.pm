@@ -1038,6 +1038,77 @@ sub attach_strings_to_issue {
     return $self->addBase64EncodedAttachmentsToIssue($issue, \@filenames, \@attachments);
 }
 
+=method B<filter_issues> FILTER [, LIMIT]
+
+This method returns a list of RemoteIssue objects from the specified
+FILTER, which is a string that is understood in one of these ways (in
+order):
+
+=over
+
+=item A space-separated list of issue keys
+
+To specify issues explicitly by their keys, which must match
+/[A-Z]+-\d+/i. The letters in the key are upcased before being passed
+to getIssue. For example:
+
+    KEY-123 chave-234 CLAVE-345
+
+=item The name of a saved filter
+
+If FILTER is a single word, it is passed to
+getIssuesFromFilterWithLimit as a filter name. For example:
+
+    sprint-backlok-filter
+
+=item A JQL expression
+
+As a last resort, FILTER is passed to getIssuesFromJqlSearch as a JQL
+expression. For example:
+
+    project = CDS AND fixVersion = sprint-5
+
+=back
+
+The optional LIMIT argument specified the maximum number of issues
+that can be returned. It has a default limit of 1000, but this can be
+overriden by the JIRA server configuration.
+
+This method is meant to be used as a flexible interface for human
+beings to request a list of issues. Be warned, however, that you are
+responsible to de-taint the FILTER argument before passing it to the
+method.
+
+The returned list of RemoteIssue objects is sorted by issue key.
+
+=cut
+
+sub filter_issues {
+    my ($self, $filter, $limit) = @_;
+
+    $filter =~ s/^\s*"?//;
+    $filter =~ s/"?\s*$//;
+
+    my $issues = do {
+	if ($filter =~ /^(?:[A-Z]+-\d+\s+)*[A-Z]+-\d+$/i) {
+	    # space separated key list
+	    [map {$self->getIssue(uc $_)} split / /, $filter];
+	} elsif ($filter =~ /^[\w-]+$/i) {
+	    # saved filter
+	    $self->getIssuesFromFilterWithLimit($filter, 0, $limit || 1000);
+	} else {
+	    # JQL filter
+	    $self->getIssuesFromJqlSearch($filter, $limit || 1000);
+	}
+    };
+
+    # Order the issues by project key and then by numeric value using
+    # a Schwartzian transform.
+    map  {$_->[2]}
+	sort {$a->[0] cmp $b->[0] or $a->[1] <=> $b->[1]}
+	    map  {my ($p, $n) = ($_->{key} =~ /([A-Z]+)-(\d+)/); [$p, $n, $_]} @$issues;
+}
+
 =head1 OTHER CONSTRUCTORS
 
 The JIRA SOAP API uses several types of objects (i.e., classes) for
