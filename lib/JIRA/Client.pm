@@ -1072,7 +1072,7 @@ expression. For example:
 
 The optional LIMIT argument specified the maximum number of issues
 that can be returned. It has a default limit of 1000, but this can be
-overriden by the JIRA server configuration.
+overridden by the JIRA server configuration.
 
 This method is meant to be used as a flexible interface for human
 beings to request a list of issues. Be warned, however, that you are
