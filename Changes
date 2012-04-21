@@ -2,6 +2,8 @@ Revision history for JIRA-Client.
 
 {{$NEXT}}
 
+	Moved from Google Code to GitHub.
+
 0.35      2012-04-12 13:14:13 America/Sao_Paulo
 
 	Add method filter_issues.

@@ -1,0 +1,11 @@
+JIRA::Client - An extended interface to JIRA's SOAP API.
+
+JIRA is a proprietary bug tracking system from Atlassian
+(L<http://www.atlassian.com/software/jira/>).
+
+Copyright (c) 2012 by CPqD (http://www.cpqd.com.br/)
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
+
+Home page: http://search.cpan.org/dist/JIRA-Client/
