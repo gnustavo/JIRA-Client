@@ -5,6 +5,7 @@ package JIRA::Client;
 # ABSTRACT: An extended interface to JIRA's SOAP API.
 
 use Carp;
+use Data::Util qw(:check);
 use SOAP::Lite;
 
 =head1 SYNOPSIS
@@ -208,16 +209,15 @@ sub _convert_security_level {
 
 sub _convert_components {
     my ($self, $components, $project) = @_;
-    croak "The 'components' value must be an ARRAY ref.\n"
-       unless ref $components && ref $components eq 'ARRAY';
+    is_array_ref($components) or croak "The 'components' value must be an ARRAY ref.\n";
     my @converted;
     my $pcomponents;		# project components
     foreach my $component (@{$components}) {
-	if (ref $component) {
-	    croak "Invalid object (", ref $component, ") in component's array.\n"
-		unless ref $component eq 'RemoteComponent';
+	if (is_instance($component => 'RemoteComponent')) {
 	    push @converted, $component;
-	} elsif ($component =~ /\D/) {
+	} elsif (is_integer($component)) {
+	    push @converted, RemoteComponent->new($component);
+	} else {
 	    # It's a component name. Let us convert it into its id.
 	    croak "Cannot convert component names because I don't know for which project.\n"
 		unless $project;
@@ -225,8 +225,6 @@ sub _convert_components {
 	    croak "There is no component called '$component'.\n"
 		unless exists $pcomponents->{$component};
 	    push @converted, RemoteComponent->new($pcomponents->{$component}{id});
-	} else {
-	    push @converted, RemoteComponent->new($component);
 	}
     }
     return \@converted;
@@ -238,16 +236,15 @@ sub _convert_components {
 
 sub _convert_versions {
     my ($self, $versions, $project) = @_;
-    croak "The '$versions' value must be an ARRAY ref.\n"
-       unless ref $versions && ref $versions eq 'ARRAY';
+    is_array_ref($versions) or croak "The '$versions' value must be an ARRAY ref.\n";
     my @converted;
     my $pversions;		# project versions
     foreach my $version (@{$versions}) {
-	if (ref $version) {
-	    croak "Invalid object (", ref $version, ") in versions's array.\n"
-		unless ref $version eq 'RemoteVersion';
+	if (is_instance($version => 'RemoteVersion')) {
 	    push @converted, $version;
-	} elsif ($version =~ /\D/) {
+	} elsif (is_integer($version)) {
+	    push @converted, RemoteVersion->new($version);
+	} else {
 	    # It is a version name. Let us convert it into its id.
 	    croak "Cannot convert version names because I don't know for which project.\n"
 		unless $project;
@@ -255,8 +252,6 @@ sub _convert_versions {
 	    croak "There is no version called '$version'.\n"
 		unless exists $pversions->{$version};
 	    push @converted, RemoteVersion->new($pversions->{$version}{id});
-	} else {
-	    push @converted, RemoteVersion->new($version);
 	}
     }
     return \@converted;
@@ -268,18 +263,16 @@ sub _convert_versions {
 
 sub _convert_duedate {
     my ($self, $duedate) = @_;
-    if (ref $duedate) {
-	return $duedate if ref $duedate eq 'SOAP::Data'; # already cast
-	croak "duedate fields must be set with DateTime references.\n"
-	    unless ref $duedate eq 'DateTime';
+    if (is_instance($duedate => 'DateTime')) {
 	return SOAP::Data->type(date => $duedate->strftime('%F'));
-    } elsif (my ($year, $month, $day) = ($duedate =~ /^(\d{4})-(\d{2})-(\d{2})/)) {
-	$month >= 1 and $month <= 12
-	    or croak "Invalid duedate ($duedate).\n";
-	return SOAP::Data->type(date => $duedate);
-    } else {
-	return $duedate;
+    } elsif (is_string($duedate)) {
+	if (my ($year, $month, $day) = ($duedate =~ /^(\d{4})-(\d{2})-(\d{2})/)) {
+	    $month >= 1 and $month <= 12
+		or croak "Invalid duedate ($duedate).\n";
+	    return SOAP::Data->type(date => $duedate);
+	}
     }
+    return $duedate;
 }
 
 # This routine receives a hash mapping custom field's ids to
@@ -291,8 +284,7 @@ sub _convert_duedate {
 
 sub _convert_custom_fields {
     my ($self, $custom_fields) = @_;
-    croak "The 'custom_fields' value must be a HASH ref.\n"
-        unless ref $custom_fields && ref $custom_fields eq 'HASH';
+    is_hash_ref($custom_fields) or croak "The 'custom_fields' value must be a HASH ref.\n";
     my %converted;
     while (my ($id, $values) = each %$custom_fields) {
 	my $realid = $id;
@@ -304,11 +296,11 @@ sub _convert_custom_fields {
         }
 
 	# Custom field values must be specified as ARRAYs but we allow for some short-cuts.
-	if (! ref $values) {
+	if (is_value($values)) {
 	    $converted{$realid} = [$values];
-	} elsif (ref $values eq 'ARRAY') {
+	} elsif (is_array_ref($values)) {
 	    $converted{$realid} = $values;
-	} elsif (ref $values eq 'HASH') {
+	} elsif (is_hash_ref($values)) {
 	    # This is a short-cut for a Cascading select field, which
 	    # must be specified like this: http://tinyurl.com/2bmthoa
 	    # The short-cut requires a HASH where each cascading level
@@ -467,10 +459,7 @@ Note that the original hash keys and values are completely preserved.
 sub create_issue
 {
     my ($self, $params, $seclevel) = @_;
-    croak "create_issue requires an argument.\n"
-        unless defined $params;
-    croak "create_issue's argument must be a HASH ref.\n"
-        unless ref $params && ref $params eq 'HASH';
+    is_hash_ref($params) or croak "create_issue's requires a HASH-ref argument.\n";
     for my $field (qw/project summary type/) {
         croak "create_issue's HASH ref must define a '$field'.\n"
             unless exists $params->{$field};
@@ -514,20 +503,14 @@ sub update_issue
 {
     my ($self, $issue, $params) = @_;
     my $key;
-    if (ref $issue) {
-	croak "update_issue's first argument must be a RemoteIssue reference.\n"
-	    unless ref $issue eq 'RemoteIssue';
+    if (is_instance($issue => 'RemoteIssue')) {
 	$key = $issue->{key};
-    }
-    else {
+    } else {
 	$key = $issue;
 	$issue = $self->getIssue($key);
     }
 
-    croak "update_issue requires two arguments.\n"
-        unless defined $params;
-    croak "update_issue's second argument must be a HASH ref.\n"
-        unless ref $params && ref $params eq 'HASH';
+    is_hash_ref($params) or croak "update_issue second argument must be a HASH ref.\n";
 
     my ($project) = ($key =~ /^([^-]+)/);
 
@@ -828,17 +811,14 @@ And risking to forget to pass some field you can do this:
 sub progress_workflow_action_safely {
     my ($self, $issue, $action, $params) = @_;
     my $key;
-    if (ref $issue) {
-	croak "progress_workflow_action_safely's first argument must be a RemoteIssue reference.\n"
-	    unless ref $issue eq 'RemoteIssue';
+    if (is_instance($issue => 'RemoteIssue')) {
         $key   = $issue->{key};
     } else {
 	$key   = $issue;
 	$issue = undef;
     }
     $params = {} unless defined $params;
-    ref $params and ref $params eq 'HASH'
-        or croak "progress_workflow_action_safely's third arg must be a HASH-ref\n";
+    is_hash_ref($params) or croak "progress_workflow_action_safely's third arg must be a HASH-ref\n";
 
     # Grok the action id if it's not a number
     if ($action =~ /\D/) {
@@ -846,8 +826,7 @@ sub progress_workflow_action_safely {
         my @named_actions     = grep {$action eq $_->{name}} @available_actions;
         if (@named_actions) {
             $action = $named_actions[0]->{id};
-        }
-        else {
+        } else {
             croak "Unavailable action ($action).\n";
         }
     }
@@ -965,28 +944,28 @@ sub attach_files_to_issue {
     my (@filenames, @attachments);
 
     for my $file (@files) {
-	if (not ref $file) {
+	if (is_string($file)) {
 	    require File::Basename;
 	    push @filenames, File::Basename::basename($file);
 	    open my $fh, '<:raw', $file
 		or croak "Can't open $file: $!\n";
 	    push @attachments, $fh;
-	}
-	elsif (ref $file eq 'HASH') {
+	} elsif (is_hash_ref($file)) {
 	    while (my ($name, $contents) = each %$file) {
 		push @filenames, $name;
-		if (not ref $contents) {
+		if (is_string($contents)) {
 		    open my $fh, '<:raw', $contents
 			or croak "Can't open $contents: $!\n";
 		    push @attachments, $fh;
-		} elsif (ref($contents) =~ /^(?:GLOB|IO::File|FileHandle)$/) {
+		} elsif (is_glob_ref($contents)
+			     || is_instance($contents => 'IO::File')
+				 || is_instance($contents => 'FileHandle')) {
 		    push @attachments, $contents;
 		} else {
 		    croak "Invalid content specification for file $name.\n";
 		}
 	    }
-	}
-	else {
+	} else {
 	    croak "Files must be specified by STRINGs or HASHes, not by " . ref($file) . "s\n";
 	}
     }
@@ -1335,7 +1314,7 @@ sub _cast_remote_comment {
 
 sub _cast_filter_name_to_id {
     my ($self, $arg) = @_;
-    ref $arg and croak "Filter arg must be a scalar, not a ", ref($arg), "\n";
+    is_string($arg) or croak "Filter arg must be a string.\n";
     return $arg unless $arg =~ /\D/;
     my $filters = $self->get_favourite_filters();
     exists $filters->{$arg} or croak "Unknown filter: $arg\n";
@@ -1344,15 +1323,12 @@ sub _cast_filter_name_to_id {
 
 sub _cast_remote_field_values {
     my ($self, $arg) = @_;
-    if (ref $arg && ref $arg eq 'HASH') {
-	return [map {RemoteFieldValue->new($_, $arg->{$_})} keys %$arg];
-    }
-    return $arg;
+    return is_hash_ref($arg) ? [map {RemoteFieldValue->new($_, $arg->{$_})} keys %$arg] : $arg;
 }
 
 sub _cast_remote_project_role {
     my ($self, $arg) = @_;
-    if (ref $arg && ref $arg eq 'RemoteProjectRole' && exists $arg->{id} && ! ref $arg->{id}) {
+    if (is_instance($arg => 'RemoteProjectRole') && exists $arg->{id} && is_string($arg->{id})) {
 	$arg->{id} = SOAP::Data->type(long => $arg->{id});
     }
     return $arg;
@@ -1397,19 +1373,17 @@ sub AUTOLOAD {
 
     # Perform any non-default type coersion
     if (my $typeof = $typeof{$method}) {
-	if (ref $typeof eq 'HASH') {
+	if (is_hash_ref($typeof)) {
 	    while (my ($i, $type) = each %$typeof) {
-		if (ref $type) {
-		    ref $type eq 'CODE'
-			or croak "Invalid coersion spec to (", ref($type), ").\n";
+		if (is_code_ref($type)) {
 		    $args[$i] = $type->($self, $args[$i]);
-		} elsif (! ref $args[$i]) {
+		} elsif (is_value($args[$i])) {
 		    $args[$i] = SOAP::Data->type($type => $args[$i]);
-		} elsif (ref $args[$i] eq 'ARRAY') {
+		} elsif (is_array_ref($args[$i])) {
 		    foreach (@{$args[$i]}) {
 			$_ = SOAP::Data->type($type => $_);
 		    }
-		} elsif (ref $args[$i] eq 'HASH') {
+		} elsif (is_hash_ref($args[$i])) {
 		    foreach (values %{$args[$i]}) {
 			$_ = SOAP::Data->type($type => $_);
 		    }
@@ -1417,8 +1391,7 @@ sub AUTOLOAD {
 		    croak "Can't coerse argument $i of method $AUTOLOAD.\n";
 		}
 	    }
-	}
-	elsif (ref $typeof eq 'CODE') {
+	} elsif (is_code_ref($typeof)) {
 	    $typeof->($self, \$method, \@args);
 	}
     }
