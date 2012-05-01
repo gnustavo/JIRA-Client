@@ -2,6 +2,10 @@ Revision history for JIRA-Client.
 
 {{$NEXT}}
 
+0.37      2012-05-01 18:48:03 America/Sao_Paulo
+
+	Use Data::Util to make for cleaner code.
+
 0.36      2012-04-21 20:55:58 America/Sao_Paulo
 
 	Moved from Google Code to GitHub.
