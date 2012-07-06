@@ -134,18 +134,9 @@ sub new {
     return bless $self, $class;
 }
 
-sub DESTROY {
-    # FIXME - This call to logout during global destruction in the
-    # context of the SVN::Hooks module doesn't work right. When it's
-    # called the 'soap' member is undefined for a reason that escapes
-    # me so far. Getting rid of the DESTROY method doesn't work either
-    # because it would trigger a call to AUTOLOAD which is unable to
-    # do it correctly. I think a call to logout is proper here to shut
-    # down the SOAP connection cleanly, but it doesn't seem to hurt
-    # not to call it.
-
-    # shift->logout();
-}
+# This empty DESTROY is necessary because we're using AUTOLOAD.
+# http://www.perlmonks.org/?node_id=93045
+sub DESTROY { }
 
 # The issue "https://jira.atlassian.com/browse/JRA-12300" explains why
 # some fields in JIRA have nonintuitive names. Here we map them.
