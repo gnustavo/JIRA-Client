@@ -118,9 +118,12 @@ sub new {
     croak $auth->faultcode(), ', ', $auth->faultstring()
         if defined $auth->fault();
 
+    my $auth_result = $auth->result()
+	or croak "Unknown error while connecting to JIRA. Please, check the URL.\n";
+
     my $self = {
         soap  => $soap,
-        auth  => $auth->result(),
+        auth  => $auth_result,
         iter  => undef,
         cache => {
             components => {}, # project_key => {name => RemoteComponent}
