@@ -127,7 +127,7 @@ sub new {
     my $soap = SOAP::Lite->proxy($url->as_string(), @args);
 
     # Make all scalars be encoded as strings by default.
-    %{$soap->typelookup()} = (default => [0, sub {1}, 'as_string']);
+    $soap->typelookup({default => [0, sub {1}, 'as_string']});
 
     my $auth = $soap->login($user, $pass);
     croak $auth->faultcode(), ', ', $auth->faultstring()
