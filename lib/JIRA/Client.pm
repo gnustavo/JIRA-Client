@@ -48,7 +48,7 @@ L<http://docs.atlassian.com/software/jira/docs/api/rpc-jira-plugin/latest/com/at
 Moreover, it implements some other methods to make it easier to do
 some common operations.
 
-=head2 API METHODS
+=head1 API METHODS
 
 With the exception of the API C<login> and C<logout> methods, which
 aren't needed, all other methods are available through the
@@ -88,7 +88,7 @@ specified second.
 
 =back
 
-=head2 EXTRA METHODS
+=head1 EXTRA METHODS
 
 This module implements some extra methods to add useful functionality
 to the API. They are described below. Note that their names don't
@@ -96,7 +96,7 @@ follow the CamelCase convention used by the native API methods but the
 more Perlish underscore_separated_words convention so that you can
 distinguish them and we can avoid future name clashes.
 
-=method B<new> JIRAURL, USER, PASSWD [, <SOAP::Lite arguments>]
+=head2 B<new> JIRAURL, USER, PASSWD [, <SOAP::Lite arguments>]
 
 C<JIRAURL> can be simply the JIRA server's base URL, with no path,
 query or fragment (e.g., C<https://jira.example.net/>). In this case,
@@ -397,7 +397,7 @@ sub _flaten_components_and_versions {
     }
 }
 
-=method B<create_issue> HASH_REF [, SECURITYLEVEL]
+=head2 B<create_issue> HASH_REF [, SECURITYLEVEL]
 
 Creates a new issue given a hash containing the initial values for its
 fields and, optionally, a security-level. The hash must specify at
@@ -496,7 +496,7 @@ sub create_issue
     }
 }
 
-=method B<update_issue> ISSUE_OR_KEY, HASH_REF
+=head2 B<update_issue> ISSUE_OR_KEY, HASH_REF
 
 Update a issue given a hash containing the values for its fields. The
 first argument may be an issue key or a RemoteIssue object. The second
@@ -530,7 +530,7 @@ sub update_issue
     return $self->updateIssue($key, $params);
 }
 
-=method B<get_issue_types>
+=head2 B<get_issue_types>
 
 Returns a hash mapping the server's issue type names to the
 RemoteIssueType objects describing them.
@@ -543,7 +543,7 @@ sub get_issue_types {
     return $self->{cache}{issue_types};
 }
 
-=method B<get_subtask_issue_types>
+=head2 B<get_subtask_issue_types>
 
 Returns a hash mapping the server's sub-task issue type names to the
 RemoteIssueType objects describing them.
@@ -556,7 +556,7 @@ sub get_subtask_issue_types {
     return $self->{cache}{subtask_issue_types};
 }
 
-=method B<get_statuses>
+=head2 B<get_statuses>
 
 Returns a hash mapping the server's status names to the
 RemoteStatus objects describing them.
@@ -569,7 +569,7 @@ sub get_statuses {
     return $self->{cache}{statuses};
 }
 
-=method B<get_priorities>
+=head2 B<get_priorities>
 
 Returns a hash mapping a server's priorities names to the
 RemotePriority objects describing them.
@@ -582,7 +582,7 @@ sub get_priorities {
     return $self->{cache}{priorities};
 }
 
-=method B<get_resolutions>
+=head2 B<get_resolutions>
 
 Returns a hash mapping a server's resolution names to the
 RemoteResolution objects describing them.
@@ -595,7 +595,7 @@ sub get_resolutions {
     return $self->{cache}{resolutions};
 }
 
-=method B<get_security_levels> PROJECT-KEY
+=head2 B<get_security_levels> PROJECT-KEY
 
 Returns a hash mapping a project's security level names to the
 RemoteSecurityLevel objects describing them.
@@ -608,7 +608,7 @@ sub get_security_levels {
     return $self->{cache}{seclevels}{$project_key};
 }
 
-=method B<get_custom_fields>
+=head2 B<get_custom_fields>
 
 Returns a hash mapping JIRA's custom field names to the RemoteField
 representing them. It's useful since when you get a RemoteIssue object
@@ -627,7 +627,7 @@ sub get_custom_fields {
     return $self->{cache}{custom_fields};
 }
 
-=method B<set_custom_fields> HASHREF
+=head2 B<set_custom_fields> HASHREF
 
 Passes a hash mapping JIRA's custom field names to the RemoteField
 representing them to populate the custom field's cache. This can be
@@ -643,7 +643,7 @@ sub set_custom_fields {
     return;
 }
 
-=method B<get_components> PROJECT_KEY
+=head2 B<get_components> PROJECT_KEY
 
 Returns a hash mapping a project's components names to the
 RemoteComponent objects describing them.
@@ -656,7 +656,7 @@ sub get_components {
     return $self->{cache}{components}{$project_key};
 }
 
-=method B<get_versions> PROJECT_KEY
+=head2 B<get_versions> PROJECT_KEY
 
 Returns a hash mapping a project's versions names to the RemoteVersion
 objects describing them.
@@ -669,7 +669,7 @@ sub get_versions {
     return $self->{cache}{versions}{$project_key};
 }
 
-=method B<get_favourite_filters>
+=head2 B<get_favourite_filters>
 
 Returns a hash mapping the user's favourite filter names to its filter
 ids.
@@ -682,7 +682,7 @@ sub get_favourite_filters {
     return $self->{cache}{filters};
 }
 
-=method B<set_filter_iterator> FILTER [, CACHE_SIZE]
+=head2 B<set_filter_iterator> FILTER [, CACHE_SIZE]
 
 Sets up an iterator for the filter identified by FILTER. It must
 be called before calls to B<next_issue>.
@@ -725,7 +725,7 @@ sub set_filter_iterator {
     return;
 }
 
-=method B<next_issue>
+=head2 B<next_issue>
 
 This must be called after a call to B<set_filter_iterator>. Each call
 returns a reference to the next issue from the filter. When there are
@@ -767,7 +767,7 @@ sub next_issue {
     return shift @{$iter->{issues}};
 }
 
-=method B<progress_workflow_action_safely> ISSUE, ACTION, PARAMS
+=head2 B<progress_workflow_action_safely> ISSUE, ACTION, PARAMS
 
 This is a safe and easier to use version of the
 B<progressWorkflowAction> API method which is used to progress an
@@ -866,7 +866,7 @@ sub progress_workflow_action_safely {
     return $self->progressWorkflowAction($key, $action, $params);
 }
 
-=method B<get_issue_custom_field_values> ISSUE, NAME_OR_IDs
+=head2 B<get_issue_custom_field_values> ISSUE, NAME_OR_IDs
 
 This method receives a RemoteField object and a list of names or ids
 of custom fields. It returns a list of references to the ARRAYs
@@ -900,7 +900,7 @@ sub get_issue_custom_field_values {
     return wantarray ? @values : \@values;
 }
 
-=method B<attach_files_to_issue> ISSUE, FILES...
+=head2 B<attach_files_to_issue> ISSUE, FILES...
 
 This method attaches one or more files to an issue. The ISSUE argument
 may be an issue key or a B<RemoteIssue> object. The attachments may be
@@ -999,7 +999,7 @@ sub attach_files_to_issue {
     return $self->addBase64EncodedAttachmentsToIssue($issue, \@filenames, \@attachments);
 }
 
-=method B<attach_strings_to_issue> ISSUE, HASHREF
+=head2 B<attach_strings_to_issue> ISSUE, HASHREF
 
 This method attaches one or more strings to an issue. The ISSUE
 argument may be an issue key or a B<RemoteIssue> object. The
@@ -1026,7 +1026,7 @@ sub attach_strings_to_issue {
     return $self->addBase64EncodedAttachmentsToIssue($issue, \@filenames, \@attachments);
 }
 
-=method B<filter_issues> FILTER [, LIMIT]
+=head2 B<filter_issues> FILTER [, LIMIT]
 
 This method returns a list of RemoteIssue objects from the specified
 FILTER, which is a string that is understood in one of these ways (in
@@ -1103,7 +1103,7 @@ The JIRA SOAP API uses several types of objects (i.e., classes) for
 which the Perl SOAP interface does not provide the necessary
 constructors. This module implements some of them.
 
-=method B<RemoteFieldValue-E<gt>new> ID, VALUES
+=head2 B<RemoteFieldValue-E<gt>new> ID, VALUES
 
 The RemoteFieldValue object represents the value of a field of an
 issue. It needs two arguments:
@@ -1134,7 +1134,7 @@ sub new {
     return bless({id => $id, values => $values}, $class);
 }
 
-=method B<RemoteCustomFieldValue-E<gt>new> ID, VALUES
+=head2 B<RemoteCustomFieldValue-E<gt>new> ID, VALUES
 
 The RemoteCustomFieldValue object represents the value of a
 custom_field of an issue. It needs two arguments:
@@ -1162,7 +1162,7 @@ sub new {
     return bless({customfieldId => $id, key => undef, values => $values} => $class);
 }
 
-=method B<RemoteComponent-E<gt>new> ID, NAME
+=head2 B<RemoteComponent-E<gt>new> ID, NAME
 
 =cut
 
@@ -1175,7 +1175,7 @@ sub new {
     return $o;
 }
 
-=method B<RemoteVersion-E<gt>new> ID, NAME
+=head2 B<RemoteVersion-E<gt>new> ID, NAME
 
 =cut
 
