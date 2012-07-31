@@ -2,6 +2,15 @@ Revision history for JIRA-Client.
 
 {{$NEXT}}
 
+0.39      2012-07-31 09:25:36 America/Sao_Paulo
+
+	Revert the constructor change of 0.38 because it broke
+	invokations when JIRA server's base URL had a path component.
+
+	Implemented an alternative invokation style based on named
+	arguments passed via a hash-ref. This was suggested by Slaven
+	Rezić. Thanks!
+
 0.38      2012-07-13 19:50:24 America/Sao_Paulo
 
 	The constructor now admits non-base URLs to non-standard WSDL
