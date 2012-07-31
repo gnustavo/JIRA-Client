@@ -177,7 +177,7 @@ sub new {
     my $url = URI->new($args->{baseurl});
     $url->path_query($args->{wsdl});
 
-    my $soap = SOAP::Lite->proxy($url->as_string(), @{$args->{soapargs}});
+    my $soap = SOAP::Lite->proxy($url, @{$args->{soapargs}});
 
     # Make all scalars be encoded as strings by default.
     $soap->typelookup({default => [0, sub {1}, 'as_string']});
