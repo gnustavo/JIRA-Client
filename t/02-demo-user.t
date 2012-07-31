@@ -23,7 +23,11 @@ unless ($conf) {
 plan skip_all => "$democonf does not return a hash-ref" unless ref $conf and ref $conf eq 'HASH';
 plan skip_all => "$democonf does not define a password" unless defined $conf->{pass};
 
-my $jira = eval {JIRA::Client->new($conf->{url}, $conf->{user}, $conf->{pass})};
+my $jira = eval {JIRA::Client->new({
+    baseurl  => $conf->{url},
+    user     => $conf->{user},
+    password => $conf->{pass},
+})};
 
 ok(defined $jira, 'new returns')
     and ok(ref $jira, 'new returns an object')
