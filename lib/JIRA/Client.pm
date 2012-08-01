@@ -174,8 +174,9 @@ sub new {
 
     $args->{wsdl} = '/rpc/soap/jirasoapservice-v2?wsdl' unless exists $args->{wsdl};
 
-    my $url = URI->new($args->{baseurl});
-    $url->path_query($args->{wsdl});
+    my $url = $args->{baseurl};
+    $url =~ s{/$}{}; # clean trailing slash
+    $url .= $args->{wsdl};
 
     my $soap = SOAP::Lite->proxy($url, @{$args->{soapargs}});
 
