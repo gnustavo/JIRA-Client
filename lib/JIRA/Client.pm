@@ -7,7 +7,6 @@ package JIRA::Client;
 use Carp;
 use Data::Util qw(:check);
 use SOAP::Lite;
-use URI;
 
 =head1 SYNOPSIS
 
