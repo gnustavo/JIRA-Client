@@ -2,6 +2,11 @@ Revision history for JIRA-Client.
 
 {{$NEXT}}
 
+0.40      2012-08-02 08:21:52 America/Sao_Paulo
+
+	Fix constructor URL munging by applying a patch from Slaven
+	Rezić. Thanks again!
+
 0.39      2012-07-31 09:25:36 America/Sao_Paulo
 
 	Revert the constructor change of 0.38 because it broke
