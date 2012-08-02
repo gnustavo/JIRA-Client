@@ -99,9 +99,10 @@ distinguish them and we can avoid future name clashes.
 =head2 B<new> BASEURL, USER, PASSWD [, <SOAP::Lite arguments>]
 
 C<BASEURL> is the JIRA server's base URL (e.g.,
-C<https://jira.example.net/>), to which the default WSDL descriptor
-path (C</rpc/soap/jirasoapservice-v2?wsdl>) will be appended in order
-to construct the underlying SOAP::Lite object.
+C<https://jira.example.net> or C<https://example.net/jira>), to which
+the default WSDL descriptor path
+(C</rpc/soap/jirasoapservice-v2?wsdl>) will be appended in order to
+construct the underlying SOAP::Lite object.
 
 C<USER> and C<PASSWD> are the credentials that will be used to
 authenticate into JIRA.
