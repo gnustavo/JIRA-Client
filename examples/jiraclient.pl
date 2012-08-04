@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 
 # Sample Perl client accessing JIRA via SOAP using the CPAN
 # JIRA::Client module. This is mostly a translation of the Python
