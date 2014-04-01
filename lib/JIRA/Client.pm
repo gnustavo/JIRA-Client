@@ -1080,7 +1080,7 @@ sub attach_strings_to_issue {
     return $self->addBase64EncodedAttachmentsToIssue($issue, \@filenames, \@attachments);
 }
 
-=head2 B<filter_issues> FILTER [, LIMIT]
+=head2 B<filter_issues_unsorted> FILTER [, LIMIT]
 
 This method returns a list of RemoteIssue objects from the specified
 FILTER, which is a string that is understood in one of these ways (in
@@ -1121,34 +1121,40 @@ beings to request a list of issues. Be warned, however, that you are
 responsible to de-taint the FILTER argument before passing it to the
 method.
 
-The returned list of RemoteIssue objects is sorted by issue key.
-
 =cut
 
-sub filter_issues {
+sub filter_issues_unsorted {
     my ($self, $filter, $limit) = @_;
 
     $filter =~ s/^\s*"?//;
     $filter =~ s/"?\s*$//;
 
-    my $issues = do {
-	if ($filter =~ /^(?:[A-Z]+-\d+\s+)*[A-Z]+-\d+$/i) {
-	    # space separated key list
-	    [map {$self->getIssue(uc $_)} split / /, $filter];
-	} elsif ($filter =~ /^[\w-]+$/i) {
-	    # saved filter
-	    $self->getIssuesFromFilterWithLimit($filter, 0, $limit || 1000);
-	} else {
-	    # JQL filter
-	    $self->getIssuesFromJqlSearch($filter, $limit || 1000);
-	}
-    };
+    if ($filter =~ /^(?:[A-Z]+-\d+\s+)*[A-Z]+-\d+$/i) {
+        # space separated key list
+        return map {$self->getIssue(uc $_)} split / /, $filter;
+    } elsif ($filter =~ /^[\w-]+$/i) {
+        # saved filter
+        return @{$self->getIssuesFromFilterWithLimit($filter, 0, $limit || 1000)};
+    } else {
+        # JQL filter
+        return @{$self->getIssuesFromJqlSearch($filter, $limit || 1000)};
+    }
+}
 
+=head2 B<filter_issues> FILTER [, LIMIT]
+
+This method invokes the B<filter_issues_unsorted> method with the same
+arguments and returns the list of RemoteIssue objects sorted by issue key.
+
+=cut
+
+sub filter_issues {
     # Order the issues by project key and then by numeric value using
     # a Schwartzian transform.
     map  {$_->[2]}
 	sort {$a->[0] cmp $b->[0] or $a->[1] <=> $b->[1]}
-	    map  {my ($p, $n) = ($_->{key} =~ /([A-Z]+)-(\d+)/); [$p, $n, $_]} @$issues;
+	    map  {my ($p, $n) = ($_->{key} =~ /([A-Z]+)-(\d+)/); [$p, $n, $_]}
+                filter_issues_unsorted(@_);
 }
 
 =head1 OTHER CONSTRUCTORS
