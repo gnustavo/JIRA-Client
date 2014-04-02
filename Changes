@@ -2,6 +2,12 @@ Revision history for JIRA-Client.
 
 {{$NEXT}}
 
+0.41      2014-04-01 21:34:37 America/Sao_Paulo
+
+  [New features]
+
+  - New method filter_issues_unsorted.
+
 0.40      2012-08-02 08:21:52 America/Sao_Paulo
 
   - Fix constructor URL munging by applying a patch from Slaven
