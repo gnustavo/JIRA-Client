@@ -2,7 +2,7 @@ use strict;
 use warnings;
 
 package JIRA::Client;
-# ABSTRACT: An extended interface to JIRA's SOAP API.
+# ABSTRACT: Extended interface to JIRA's SOAP API
 
 use Carp;
 use Data::Util qw(:check);

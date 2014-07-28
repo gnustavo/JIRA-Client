@@ -1,4 +1,4 @@
-JIRA::Client - An extended interface to JIRA's SOAP API.
+JIRA::Client - Extended interface to JIRA's SOAP API
 
 JIRA is a proprietary bug tracking system from Atlassian
 (http://www.atlassian.com/software/jira/).
