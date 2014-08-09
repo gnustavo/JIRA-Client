@@ -1,8 +1,8 @@
-use strict;
-use warnings;
-
 package JIRA::Client;
 # ABSTRACT: Extended interface to JIRA's SOAP API
+
+use strict;
+use warnings;
 
 use Carp;
 use Data::Util qw(:check);
@@ -148,20 +148,22 @@ that will be created to talk to JIRA.
 =cut
 
 sub new {
-    my $class = shift;
+    my ($class, @args) = @_;
 
     my $args;
 
-    if (@_ == 1) {
-	$args = shift;
+    if (@args == 1) {
+	$args = shift @args;
 	is_hash_ref($args) or croak "$class::new sole argument must be a hash-ref.\n";
 	foreach my $arg (qw/baseurl user password/) {
 	    exists $args->{$arg}
 		or croak "Missing $arg key to $class::new hash argument.\n";
 	}
 	$args->{soapargs} = [] unless exists $args->{soapargs};
-    } elsif (@_ >= 3) {
-	my ($baseurl, $user, $password, @args) = @_;
+    } elsif (@args >= 3) {
+        my $baseurl  = shift @args;
+        my $user     = shift @args;
+        my $password = shift @args;
 	$args = {
 	    baseurl  => $baseurl,
 	    user     => $user,
@@ -449,6 +451,8 @@ sub _flaten_components_and_versions {
     foreach my $field (grep {exists $params->{$_}} keys %JRA12300) {
 	$params->{$JRA12300{$field}} = delete $params->{$field};
     }
+
+    return;
 }
 
 =head2 B<create_issue> HASH_REF [, SECURITYLEVEL]
@@ -1013,6 +1017,7 @@ sub attach_files_to_issue {
 	    open my $fh, '<:raw', $file
 		or croak "Can't open $file: $!\n";
 	    push @attachments, $fh;
+            close $fh;
 	} elsif (is_hash_ref($file)) {
 	    while (my ($name, $contents) = each %$file) {
 		push @filenames, $name;
@@ -1020,6 +1025,7 @@ sub attach_files_to_issue {
 		    open my $fh, '<:raw', $contents
 			or croak "Can't open $contents: $!\n";
 		    push @attachments, $fh;
+                    close $fh;
 		} elsif (is_glob_ref($contents)
 			     || is_instance($contents => 'IO::File')
 				 || is_instance($contents => 'FileHandle')) {
@@ -1149,12 +1155,15 @@ arguments and returns the list of RemoteIssue objects sorted by issue key.
 =cut
 
 sub filter_issues {
+    my ($self, $filter, $limit) = @_;
+
     # Order the issues by project key and then by numeric value using
     # a Schwartzian transform.
-    map  {$_->[2]}
-	sort {$a->[0] cmp $b->[0] or $a->[1] <=> $b->[1]}
-	    map  {my ($p, $n) = ($_->{key} =~ /([A-Z]+)-(\d+)/); [$p, $n, $_]}
-                filter_issues_unsorted(@_);
+    return
+        map  {$_->[2]}
+            sort {$a->[0] cmp $b->[0] or $a->[1] <=> $b->[1]}
+                map  {my ($p, $n) = ($_->{key} =~ /([A-Z]+)-(\d+)/); [$p, $n, $_]}
+                    filter_issues_unsorted($self, $filter, $limit);
 }
 
 =head1 OTHER CONSTRUCTORS
@@ -1181,6 +1190,8 @@ A scalar or an array of scalars.
 =back
 
 =cut
+
+## no critic (Modules::ProhibitMultiplePackages)
 
 package RemoteFieldValue;
 
