@@ -5,3 +5,4 @@
 *.old
 *.tar.gz
 *~
+/.tidyall.d
