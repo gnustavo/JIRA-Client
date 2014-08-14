@@ -1500,6 +1500,10 @@ distribution.
 
 =back
 
+=head1 REPOSITORY
+
+L<https://github.com/gnustavo/JIRA-Client>
+
 =cut
 
 1; # End of JIRA::Client
