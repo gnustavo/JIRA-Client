@@ -1107,6 +1107,10 @@ to getIssue. For example:
 
     KEY-123 chave-234 CLAVE-345
 
+Note that the result list doesn't respect the order in which the keys are
+specified and also that duplicate keys are discarded and the corresponding
+issue appear only once in the resulting list.
+
 =item The name of a saved filter
 
 If FILTER is a single word, it is passed to
@@ -1142,7 +1146,21 @@ sub filter_issues_unsorted {
 
     if ($filter =~ /^(?:[A-Z]+-\d+\s+)*[A-Z]+-\d+$/i) {
         # space separated key list
-        return map {$self->getIssue(uc $_)} split / /, $filter;
+
+        # Let's construct a JQL query in the form "issuekey IN (...)" to
+        # pass to getIssuesFromJqlSearch.
+
+        my %keys = map {($_ => undef)} split / /, $filter; # discard duplicates
+        my @keys = keys %keys;
+
+        # If the list is too big we split it up and invoke
+        # getIssuesFromJqlSearch several times.
+        my @issues;
+        while (my @subkeys = splice(@keys, 0, 128)) {
+            my $jql = 'issuekey IN (' . join(',', @subkeys) . ')';
+            push @issues, @{$self->getIssuesFromJqlSearch($jql, 1000)};
+        }
+        return @issues;
     } elsif ($filter =~ /^[\w-]+$/i) {
         # saved filter
         return @{$self->getIssuesFromFilterWithLimit($filter, 0, $limit || 1000)};
