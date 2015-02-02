@@ -1,5 +1,5 @@
 package JIRA::Client;
-# ABSTRACT: Extended interface to JIRA's SOAP API
+# ABSTRACT: (DEPRECATED) Extended interface to JIRA's SOAP API
 
 use strict;
 use warnings;
@@ -36,13 +36,13 @@ use SOAP::Lite;
 
 =head1 DESCRIPTION
 
-JIRA is a proprietary bug tracking system from Atlassian
-(L<http://www.atlassian.com/software/jira/>).
-
 B<DEPRECATION WARNING>: Please, before using this module consider using the
 newer L<JIRA::REST> because JIRA's SOAP API was
 L<deprecated|https://developer.atlassian.com/display/JIRADEV/SOAP+and+XML-RPC+API+Deprecated+in+JIRA+6.0>
-on JIRA 6.0 and won't be available anymore on JIRA 7.0.
+on JIRA 6.0 and won't be available anymore on JIRA 8.0.
+
+JIRA is a proprietary bug tracking system from Atlassian
+(L<http://www.atlassian.com/software/jira/>).
 
 This module implements an Object Oriented wrapper around JIRA's SOAP
 API, which is specified in
