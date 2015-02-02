@@ -2,6 +2,14 @@ Revision history for JIRA-Client.
 
 {{$NEXT}}
 
+0.43      2015-02-01 22:33:09-02:00 America/Sao_Paulo
+
+  [Changes]
+
+  - Deprecate the distribution, because JIRA's SOAP API is already
+    deprecated and won't be available in future JIRA 8.0. Prospect users are
+    invited to try the JIRA::REST module instead.
+
 0.42      2014-08-09 17:47:44 America/Sao_Paulo
 
   [Changes]
