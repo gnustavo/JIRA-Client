@@ -38,8 +38,8 @@ use SOAP::Lite;
 
 B<DEPRECATION WARNING>: Please, before using this module consider using the
 newer L<JIRA::REST> because JIRA's SOAP API was
-L<deprecated|https://developer.atlassian.com/display/JIRADEV/SOAP+and+XML-RPC+API+Deprecated+in+JIRA+6.0>
-on JIRA 6.0 and won't be available anymore on JIRA 8.0.
+L<deprecated|https://developer.atlassian.com/jiradev/latest-updates/soap-and-xml-rpc-api-deprecation-notice>
+on JIRA 6.0 and isn't available anymore on JIRA 7.0.
 
 JIRA is a proprietary bug tracking system from Atlassian
 (L<http://www.atlassian.com/software/jira/>).
