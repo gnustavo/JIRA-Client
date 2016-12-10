@@ -2,6 +2,13 @@ Revision history for JIRA-Client.
 
 {{$NEXT}}
 
+0.44      2016-12-10 10:00:09-02:00 America/Sao_Paulo
+
+  [Fix]
+
+  - Fix deprecation warning saying that JIRA's SOAP API was removed on JIRA
+    7 and not that it would be removed on JIRA 8.
+
 0.43      2015-02-01 22:33:09-02:00 America/Sao_Paulo
 
   [Changes]
