@@ -2,6 +2,12 @@ Revision history for JIRA-Client.
 
 {{$NEXT}}
 
+0.45      2016-12-11 10:52:46-02:00 America/Sao_Paulo
+
+  [Fix]
+
+  - Fix a few spelling errors and remove the TODO file.
+
 0.44      2016-12-10 10:00:09-02:00 America/Sao_Paulo
 
   [Fix]
