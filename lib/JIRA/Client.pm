@@ -986,14 +986,14 @@ each hash.
 
 =back
 
-The method retuns the value returned by the
+The method returns the value returned by the
 B<addBase64EncodedAttachmentsToIssue> API method.
 
 In the example below, we attach three files to the issue TST-1. The
 first is called C<file1.txt> and its contents are read from
 C</path/to/file1.txt>. The second is called C<text.txt> and its
 contents are read from C</path/to/file2.txt>. the third is called
-C<me.jpg> and its contents are read from the object refered to by
+C<me.jpg> and its contents are read from the object referred to by
 C<$fh>.
 
     $jira->attach_files_to_issue('TST-1',
@@ -1071,7 +1071,7 @@ argument may be an issue key or a B<RemoteIssue> object. The
 attachments are specified by a HASHREF in which the keys denote the
 file names and the values their contents.
 
-The method retuns the value returned by the
+The method returns the value returned by the
 B<addBase64EncodedAttachmentsToIssue> API method.
 
 =cut
